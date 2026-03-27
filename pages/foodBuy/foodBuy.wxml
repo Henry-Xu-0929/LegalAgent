@@ -1,0 +1,71 @@
+<view class="page">
+  <view class="search-bar">
+    <input class="search-input" placeholder="搜索文件/案件/客户/关键词" value="{{searchInput}}" bindinput="onSearchInput" bindconfirm="onSearchConfirm" confirm-type="search" />
+    <view class="search-action" bindtap="clearSearch">清空</view>
+  </view>
+  <view class="category-row">
+    <view
+      class="category-chip {{activeCategory===item.value?'active':''}}"
+      wx:for="{{categories}}"
+      wx:key="value"
+      data-value="{{item.value}}"
+      bindtap="onCategoryChange"
+    >
+      {{item.label}}
+    </view>
+  </view>
+  <view class="section-title">法律文件归纳与检索</view>
+  <view wx:if="{{isEmpty}}" class="empty-state">
+    <view class="empty-title">暂无归档文件</view>
+    <view class="empty-desc">上传或生成文件后会自动归档到云端</view>
+  </view>
+  <view class="contract-list">
+    <view class="contract-card" wx:for="{{filteredContracts}}" wx:key="id">
+      <view class="contract-header">
+        <view class="contract-title">{{item.title}}</view>
+        <view class="category-tag">{{item.category}}</view>
+      </view>
+      <view class="contract-meta">来源：{{item.sourceType || "未知"}} ｜ 状态：{{item.displayStatus || item.status || "未标记"}} ｜ 版本：{{item.displayVersionLabel || ("第" + (item.versionNo || 1) + "版")}}</view>
+      <view wx:if="{{item.caseTitle || item.caseKey}}" class="contract-meta">案件：{{item.caseTitle || item.caseKey}}</view>
+      <view class="contract-summary">{{item.summary || "暂无归纳内容"}}</view>
+      <view class="keyword-row">
+        <view class="keyword-chip" wx:for="{{item.keywords}}" wx:key="*this">{{item}}</view>
+      </view>
+      <view class="contract-time">创建：{{item.createdAt}} ｜ 更新：{{item.updatedAt}}</view>
+      <view class="contract-actions">
+        <view class="action-chip" data-id="{{item.id}}" bindtap="openContractDetail">查看全文</view>
+        <view class="action-chip" data-id="{{item.id}}" bindtap="deleteContract">删除</view>
+      </view>
+    </view>
+  </view>
+  <view wx:if="{{loading}}" class="loading-text">加载中...</view>
+  <view wx:if="{{!loading && contracts.length>0 && contracts.length>=total}}" class="loading-text">没有更多了</view>
+  <view wx:if="{{showDetail && activeContract}}" class="detail-mask" bindtap="closeContractDetail">
+    <view class="detail-panel" catchtap="noop">
+      <view class="detail-title">{{activeContract.title}}</view>
+      <view class="detail-meta">分类：{{activeContract.category}} ｜ 来源：{{activeContract.sourceType}}</view>
+      <view wx:if="{{activeContract.caseTitle || activeContract.caseKey}}" class="detail-meta">案件：{{activeContract.caseTitle || activeContract.caseKey}}</view>
+      <view class="detail-meta">状态：{{activeContract.displayStatus || activeContract.status || "未标记"}} ｜ 版本：{{activeContract.displayVersionLabel || ("第" + (activeContract.versionNo || 1) + "版")}}</view>
+      <view wx:if="{{activeContract.fileName}}" class="detail-meta">附件：{{activeContract.fileName}}</view>
+      <view wx:if="{{activeContract.manualEdited}}" class="detail-meta">手动编辑：{{activeContract.manualEditCount || 1}}次 ｜ 最近编辑：{{activeContract.manualEditUpdatedAt || activeContract.updatedAt}}</view>
+      <view class="detail-meta">创建：{{activeContract.createdAt}} ｜ 更新：{{activeContract.updatedAt}}</view>
+      <view wx:if="{{!isEditing}}" class="detail-content">{{activeContract.content}}</view>
+      <textarea
+        wx:if="{{isEditing}}"
+        class="detail-editor"
+        value="{{editContent}}"
+        maxlength="-1"
+        auto-height
+        show-confirm-bar="false"
+        bindinput="onEditContentInput"
+      />
+      <view class="detail-actions">
+        <view class="detail-btn primary" bindtap="toggleEditMode">{{isEditing ? (savingEdit ? "保存中..." : "保存编辑") : "手动编辑"}}</view>
+        <view class="detail-btn" bindtap="exportContractWord">导出Word</view>
+        <view wx:if="{{activeContract.fileId}}" class="detail-btn secondary" bindtap="openContractWord">打开原始Word</view>
+        <view class="detail-btn danger" data-id="{{activeContract.id}}" bindtap="deleteContract">删除</view>
+        <view class="detail-close" bindtap="closeContractDetail">关闭</view>
+      </view>
+    </view>
+  </view>
+</view>

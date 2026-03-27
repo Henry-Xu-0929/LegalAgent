@@ -1,0 +1,14 @@
+<!--pages/chatBot/chatBot.wxml-->
+<view class="chat-page">
+  <view class="feature-bar-top">
+    <scroll-view scroll-x class="feature-scroll">
+      <view class="feature-item {{activeFeature === item.key ? 'active' : ''}}" wx:for="{{features}}" wx:key="key" data-key="{{item.key}}" bindtap="selectFeature">
+        {{item.label}}
+      </view>
+    </scroll-view>
+  </view>
+  <view class="chat-content">
+    <agent-ui class="chat-agent" agentConfig="{{agentConfig}}" showBotAvatar="{{showBotAvatar}}" chatMode="{{chatMode}}" modelConfig="{{modelConfig}}" envShareConfig="{{envShareConfig}}">
+    </agent-ui>
+  </view>
+</view>

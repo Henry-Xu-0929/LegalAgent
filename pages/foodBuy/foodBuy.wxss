@@ -1,0 +1,271 @@
+.page {
+  min-height: 100vh;
+  background: #f0f5ff;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.search-bar {
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 16rpx;
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 26rpx;
+}
+
+.search-action {
+  color: #1f5eff;
+  font-size: 24rpx;
+}
+
+.section-title {
+  margin: 28rpx 0 16rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1b1b1f;
+}
+
+.category-row {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+  overflow-x: auto;
+}
+
+.category-chip {
+  padding: 10rpx 18rpx;
+  border-radius: 999rpx;
+  background: #eef1ff;
+  color: #3461ff;
+  font-size: 22rpx;
+  white-space: nowrap;
+}
+
+.category-chip.active {
+  background: #0052d9;
+  color: #ffffff;
+}
+
+.contract-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.empty-state {
+  margin: 24rpx 0;
+  padding: 32rpx;
+  border-radius: 16rpx;
+  background: #ffffff;
+  text-align: center;
+  color: #7a808a;
+}
+
+.empty-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #3c4049;
+}
+
+.empty-desc {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #8a8f99;
+}
+
+.contract-card {
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(16, 24, 40, 0.06);
+}
+
+.contract-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12rpx;
+}
+
+.contract-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1b1b1f;
+}
+
+.category-tag {
+  background: #eef3ff;
+  color: #1f5eff;
+  border-radius: 10rpx;
+  padding: 6rpx 12rpx;
+  font-size: 20rpx;
+}
+
+.contract-meta {
+  margin-top: 8rpx;
+  color: #5c616b;
+  font-size: 24rpx;
+}
+
+.contract-summary {
+  margin-top: 12rpx;
+  color: #30343b;
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.keyword-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8rpx;
+  margin-top: 10rpx;
+}
+
+.keyword-chip {
+  border-radius: 8rpx;
+  background: #f4f6fb;
+  color: #5c616b;
+  font-size: 20rpx;
+  padding: 6rpx 10rpx;
+}
+
+.contract-time {
+  margin-top: 8rpx;
+  color: #8a8f99;
+  font-size: 22rpx;
+}
+
+.contract-actions {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.action-chip {
+  padding: 10rpx 20rpx;
+  background: #0052d9;
+  color: #ffffff;
+  border-radius: 999rpx;
+  font-size: 22rpx;
+}
+
+.action-chip.ghost {
+  background: #eef1ff;
+  color: #1f5eff;
+}
+
+.loading-text {
+  margin: 24rpx 0 10rpx;
+  color: #8a8f99;
+  font-size: 22rpx;
+  text-align: center;
+}
+
+.detail-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  z-index: 99;
+}
+
+.detail-panel {
+  width: 100%;
+  max-height: 85vh;
+  background: #ffffff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 28rpx 24rpx 32rpx;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-title {
+  color: #1b1b1f;
+  font-size: 30rpx;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.detail-meta {
+  color: #5c616b;
+  font-size: 22rpx;
+  margin-top: 8rpx;
+  flex-shrink: 0;
+}
+
+.detail-content {
+  margin-top: 16rpx;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  color: #1f2329;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin-bottom: 24rpx;
+}
+
+.detail-editor {
+  margin-top: 16rpx;
+  flex: 1;
+  min-height: 360rpx;
+  width: 100%;
+  box-sizing: border-box;
+  border: 2rpx solid #dbe6ff;
+  border-radius: 12rpx;
+  padding: 18rpx;
+  color: #1f2329;
+  line-height: 1.6;
+  background: #f9fbff;
+  margin-bottom: 24rpx;
+}
+
+.detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  flex-shrink: 0;
+}
+
+.detail-btn {
+  text-align: center;
+  border-radius: 12rpx;
+  background: #eef1ff;
+  color: #1f5eff;
+  padding: 16rpx 0;
+  font-size: 26rpx;
+  font-weight: 500;
+}
+
+.detail-btn.primary {
+  background: #0052d9;
+  color: #ffffff;
+}
+
+.detail-btn.secondary {
+  background: #f5f7fb;
+  color: #4b5563;
+}
+
+.detail-btn.danger {
+  background: #ffeded;
+  color: #d93a49;
+}
+
+.detail-close {
+  text-align: center;
+  border-radius: 12rpx;
+  background: #0052d9;
+  color: #ffffff;
+  padding: 16rpx 0;
+  font-size: 26rpx;
+  font-weight: 500;
+  margin-top: 16rpx;
+}

@@ -1,0 +1,283 @@
+.page {
+  min-height: 100vh;
+  background: #f0f5ff;
+  padding: 24rpx;
+  box-sizing: border-box;
+  padding-bottom: 60rpx;
+}
+
+.section-title {
+  margin: 16rpx 0;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1b1b1f;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16rpx;
+}
+
+.empty-state {
+  margin: 12rpx 0 24rpx;
+  padding: 32rpx;
+  border-radius: 16rpx;
+  background: #ffffff;
+  text-align: center;
+  color: #7a808a;
+}
+
+.empty-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #3c4049;
+}
+
+.empty-desc {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  color: #8a8f99;
+}
+
+.metric-card {
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  text-align: center;
+  box-shadow: 0 8rpx 24rpx rgba(16, 24, 40, 0.06);
+}
+
+.metric-value {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #0052d9;
+}
+
+.metric-label {
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #6b707a;
+}
+
+.trend-card {
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
+.trend-label {
+  font-size: 24rpx;
+  color: #5d616a;
+}
+
+.trend-value {
+  font-size: 24rpx;
+  color: #1b1b1f;
+  font-weight: 500;
+}
+
+.chart-container {
+  margin-top: 24rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(16, 24, 40, 0.06);
+}
+
+.chart-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1b1b1f;
+  margin-bottom: 24rpx;
+  display: flex;
+  align-items: center;
+}
+
+/* Heatmap Styles */
+.heatmap {
+  display: flex;
+  margin-top: 10rpx;
+}
+
+.heatmap-y-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-right: 16rpx;
+  padding-bottom: 40rpx;
+  color: #8b9099;
+  font-size: 22rpx;
+}
+
+.heatmap-label {
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+}
+
+.heatmap-grid {
+  display: flex;
+  flex: 1;
+  justify-content: space-between;
+}
+
+.heatmap-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.heatmap-block {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 6rpx;
+}
+
+.heatmap-x-label {
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: #8b9099;
+}
+
+/* Risk List Styles */
+.risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.risk-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.risk-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 24rpx;
+}
+
+.risk-label {
+  display: flex;
+  align-items: center;
+  color: #3c4049;
+  font-weight: 500;
+}
+
+.risk-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  margin-right: 12rpx;
+}
+
+.risk-value {
+  color: #8b9099;
+}
+
+.risk-bar-bg {
+  width: 100%;
+  height: 12rpx;
+  background: #f0f2f8;
+  border-radius: 6rpx;
+  overflow: hidden;
+}
+
+.risk-bar-fill {
+  height: 100%;
+  border-radius: 6rpx;
+}
+
+/* FAQ List Styles */
+.faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.faq-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f2f8;
+}
+
+.faq-item:last-child {
+  border-bottom: none;
+}
+
+.faq-rank {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 6rpx;
+  background: #f0f2f8;
+  color: #8b9099;
+  font-size: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16rpx;
+  font-weight: 600;
+}
+
+.faq-top {
+  background: #e34d59;
+  color: #ffffff;
+}
+
+.faq-content {
+  flex: 1;
+  font-size: 26rpx;
+  color: #3c4049;
+  line-height: 1.5;
+}
+
+.faq-count {
+  font-size: 24rpx;
+  color: #8b9099;
+  margin-left: 16rpx;
+  white-space: nowrap;
+}
+
+/* Suggestion Styles */
+.suggestion-container {
+  background: linear-gradient(180deg, #f2f6ff 0%, #ffffff 100%);
+  border: 1rpx solid #e0e8ff;
+}
+
+.ai-icon {
+  width: 32rpx;
+  height: 32rpx;
+  margin-right: 12rpx;
+}
+
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: flex-start;
+  font-size: 26rpx;
+  color: #3c4049;
+  line-height: 1.6;
+}
+
+.suggestion-bullet {
+  color: #0052d9;
+  margin-right: 12rpx;
+  font-weight: bold;
+}
+
+.suggestion-text {
+  flex: 1;
+}

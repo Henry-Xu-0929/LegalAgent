@@ -1,0 +1,74 @@
+.container {
+  min-height: 100vh;
+  background: #f0f5ff;
+  padding: 30rpx;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  padding: 40rpx;
+  background: #ffffff;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(31, 94, 255, 0.04);
+  margin-bottom: 30rpx;
+}
+
+.avatar {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  margin-right: 30rpx;
+  background: #e7ecff;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+}
+
+.nickname {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 10rpx;
+}
+
+.role {
+  font-size: 26rpx;
+  color: #888888;
+}
+
+.menu-list {
+  background: #ffffff;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(31, 94, 255, 0.04);
+  padding: 0 30rpx;
+}
+
+.menu-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 30rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.menu-item:last-child {
+  border-bottom: none;
+}
+
+.menu-title {
+  font-size: 30rpx;
+  color: #333333;
+}
+
+.text-danger {
+  color: #ff4d4f;
+}
+
+.arrow {
+  width: 32rpx;
+  height: 32rpx;
+  opacity: 0.3;
+}

@@ -1,0 +1,64 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/chatBot/chatBot",
+    "pages/foodBuy/foodBuy",
+    "pages/reports/reports",
+    "pages/my/my"
+  ],
+  "usingComponents": {
+    "custom-map": "/components/toolCard/map/index",
+    "custom-weather": "/components/toolCard/weather/index",
+    "custom-food-list": "/components/toolCard/food-list/index",
+    "custom-business-list": "/components/toolCard/business-list/index"
+  },
+  "window": {
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "法律智能体",
+    "backgroundColor": "#eeeeee",
+    "backgroundTextStyle": "light",
+    "enablePullDownRefresh": true
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents",
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#0052d9",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/chatBot/chatBot",
+        "text": "对话",
+        "iconPath": "/imgs/chat.png",
+        "selectedIconPath": "/imgs/chat-active.png"
+      },
+      {
+        "pagePath": "pages/foodBuy/foodBuy",
+        "text": "法律文件归纳与检索",
+        "iconPath": "/imgs/work.png",
+        "selectedIconPath": "/imgs/work-active.png"
+      },
+      {
+        "pagePath": "pages/reports/reports",
+        "text": "统计报表",
+        "iconPath": "/imgs/report.png",
+        "selectedIconPath": "/imgs/report-active.png"
+      },
+      {
+        "pagePath": "pages/my/my",
+        "text": "我的",
+        "iconPath": "/imgs/my.png",
+        "selectedIconPath": "/imgs/my-active.png"
+      }
+    ]
+  },
+  "networkTimeout": {
+    "request": 300000,
+    "connectSocket": 60000,
+    "uploadFile": 60000,
+    "downloadFile": 60000
+  }
+}

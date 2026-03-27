@@ -1,0 +1,11 @@
+{
+  "name": "ai-chat",
+  "version": "1.0.0",
+  "main": "index.js",
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "mammoth": "^1.8.0",
+    "pdf-parse": "^1.1.1",
+    "wx-server-sdk": "latest"
+  }
+}
