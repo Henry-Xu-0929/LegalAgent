@@ -1,3 +1,4 @@
+const i18n = require("../../../utils/i18n");
 const { getCloudInstance, randomSelectInitquestion } = require("../tools");
 const { createWelcomeRecord, getFeatureWelcomeText } = require("../model-request-builder");
 
@@ -10,7 +11,7 @@ module.exports = {
     this.setData(
       {
         triggered: true,
-        refreshText: "刷新中",
+        refreshText: i18n.t("agent.refreshing"),
       },
       async () => {
         if (this.data.chatMode === "bot") {
@@ -40,7 +41,7 @@ module.exports = {
             if (this.data.total === this.data.chatRecords.length - 1) {
               this.setData({
                 triggered: false,
-                refreshText: "到底啦",
+                refreshText: i18n.t("agent.refreshDone"),
               });
               return;
             }
@@ -95,7 +96,7 @@ module.exports = {
           }
           this.setData({
             triggered: false,
-            refreshText: "下拉加载历史记录",
+            refreshText: i18n.t("agent.refreshDefault"),
           });
         }
       }
@@ -110,9 +111,11 @@ module.exports = {
     this.setData({ showTools: false });
     if (chatMode === "model") {
       const featureKey = this.data.activeFeatureKey || this.data.modelConfig?.currentFeatureKey || "consult";
-      const initialRecord = createWelcomeRecord(
-        getFeatureWelcomeText(featureKey, this.data.modelConfig, this.data.modelConfig?.welcomeMsg)
-      );
+      const welcomeText =
+        typeof this.resolveFeatureWelcomeText === "function"
+          ? this.resolveFeatureWelcomeText(featureKey)
+          : getFeatureWelcomeText(featureKey, this.data.modelConfig, this.data.modelConfig?.welcomeMsg);
+      const initialRecord = createWelcomeRecord(welcomeText);
       const map = {
         ...this.data.featureChatRecordsMap,
         [featureKey]: [initialRecord],
@@ -133,7 +136,7 @@ module.exports = {
       return;
     }
     const record = {
-      content: bot.welcomeMessage || "你好，有什么我可以帮到你？",
+      content: bot.welcomeMessage || i18n.t("agent.welcomeDefault"),
       record_id: "record_id" + String(+new Date() + 10),
       role: "assistant",
       hiddenBtnGround: true,
@@ -159,7 +162,7 @@ module.exports = {
       const newChatRecords = [...chatRecords];
       const record = newChatRecords[newChatRecords.length - 1];
       if (chatStatus === 1) {
-        record.content = "已暂停生成";
+        record.content = i18n.t("agent.paused");
       }
       if (chatStatus === 2) {
         record.pauseThinking = true;
@@ -237,7 +240,7 @@ module.exports = {
       this.data.sendFileList.some((item) => !item.fileId || item.status !== "parsed")
     ) {
       wx.showToast({
-        title: "文件上传解析中",
+        title: i18n.t("agent.uploadParsing"),
         icon: "error",
       });
       return;

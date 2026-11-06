@@ -1,3 +1,4 @@
+const i18n = require("../../../utils/i18n");
 const { getCloudInstance } = require("../tools");
 
 module.exports = {
@@ -70,7 +71,7 @@ module.exports = {
     } catch (e) {
       console.error(e);
       this.setData({
-        [`messages[${currentAiMsgIndex}].parts`]: [{ type: "error", content: "网络出错了，请稍后再试，(｡ì _ í｡)" }],
+        [`messages[${currentAiMsgIndex}].parts`]: [{ type: "error", content: i18n.t("agent.networkError") }],
       });
     }
   },
@@ -140,7 +141,7 @@ module.exports = {
         case "RUN_ERROR":
           const agentErrorPart = {
             type: "error",
-            content: "agent 出错了，请稍后再试，(｡ì _ í｡)",
+            content: i18n.t("agent.networkError"),
           };
           currentParts.push(agentErrorPart);
           this.setData({
@@ -165,7 +166,7 @@ module.exports = {
           } else if (typeof this.callFunctionByName === "function") {
             toolResult = await this.callFunctionByName(toolCallName, parsedArgs);
           } else {
-            throw new Error(`工具${toolCallName}未配置`);
+            throw new Error(i18n.t("agent.toolNotConfigured", { tool: toolCallName }));
           }
           const toolResultStr = JSON.stringify(toolResult);
           frontendToolsResult.push({
@@ -185,7 +186,7 @@ module.exports = {
         } catch (e) {
           frontendToolsResult.push({
             toolCallId,
-            result: `工具${toolCallName}调用失败：${e.message}`,
+            result: i18n.t("agent.toolCallFailed", { tool: toolCallName, message: e.message }),
           });
           this.setData({
             [`messages[${currentAiMsgIndex}].parts[${currentParts.findIndex(

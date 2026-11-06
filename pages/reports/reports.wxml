@@ -1,10 +1,10 @@
 <view class="page">
-  <view class="section-title">统计报表</view>
+  <view class="section-title">{{t.report.title}}</view>
   <view wx:if="{{isEmpty}}" class="empty-state">
-    <view class="empty-title">暂无报表数据</view>
-    <view class="empty-desc">在云端 reports 集合新增 overview 文档后自动显示</view>
+    <view class="empty-title">{{t.report.empty}}</view>
+    <view class="empty-desc">{{t.report.emptyDesc}}</view>
   </view>
-  
+
   <block wx:else>
     <!-- 核心指标 -->
     <view class="metrics">
@@ -13,9 +13,9 @@
         <view class="metric-label">{{item.label}}</view>
       </view>
     </view>
-    
+
     <!-- 趋势概览 -->
-    <view class="section-title">趋势概览</view>
+    <view class="section-title">{{t.report.trends}}</view>
     <view class="trend-card" wx:for="{{trends}}" wx:key="label">
       <view class="trend-label">{{item.label}}</view>
       <view class="trend-value">{{item.value}}</view>
@@ -23,14 +23,14 @@
 
     <!-- 法务咨询热力图 -->
     <view class="chart-container">
-      <view class="chart-title">法务咨询热力图</view>
+      <view class="chart-title">{{t.report.heatmap}}</view>
       <view class="heatmap">
         <view class="heatmap-y-labels">
           <view class="heatmap-label" wx:for="{{timeLabels}}" wx:key="*this">{{item}}</view>
         </view>
         <view class="heatmap-grid">
           <view class="heatmap-col" wx:for="{{heatmap}}" wx:key="day">
-            <view class="heatmap-block" wx:for="{{item.blocks}}" wx:for-item="block" wx:key="index" style="background-color: {{block.color}};" title="{{block.count}}次"></view>
+            <view class="heatmap-block" wx:for="{{item.blocks}}" wx:for-item="block" wx:key="index" style="background-color: {{block.color}};" title="{{block.count}}{{t.report.timesSuffix}}"></view>
             <view class="heatmap-x-label">{{item.day}}</view>
           </view>
         </view>
@@ -39,7 +39,7 @@
 
     <!-- 合同风险分布 -->
     <view class="chart-container">
-      <view class="chart-title">合同风险分布</view>
+      <view class="chart-title">{{t.report.riskDistribution}}</view>
       <view class="risk-list">
         <view class="risk-item" wx:for="{{risks}}" wx:key="label">
           <view class="risk-info">
@@ -47,7 +47,7 @@
               <view class="risk-dot" style="background-color: {{item.color}};"></view>
               {{item.label}}
             </view>
-            <view class="risk-value">{{item.percentage}}% ({{item.value}}例)</view>
+            <view class="risk-value">{{item.percentage}}% ({{item.value}}{{t.report.casesSuffix}})</view>
           </view>
           <view class="risk-bar-bg">
             <view class="risk-bar-fill" style="width: {{item.percentage}}%; background-color: {{item.color}};"></view>
@@ -58,12 +58,12 @@
 
     <!-- 高频问题 -->
     <view class="chart-container">
-      <view class="chart-title">高频咨询问题</view>
+      <view class="chart-title">{{t.report.frequentQuestions}}</view>
       <view class="faq-list">
         <view class="faq-item" wx:for="{{frequentQuestions}}" wx:key="question">
           <view class="faq-rank {{index < 3 ? 'faq-top' : ''}}">{{index + 1}}</view>
           <view class="faq-content">{{item.question}}</view>
-          <view class="faq-count">{{item.count}}次</view>
+          <view class="faq-count">{{item.count}}{{t.report.timesSuffix}}</view>
         </view>
       </view>
     </view>
@@ -72,7 +72,7 @@
     <view class="chart-container suggestion-container">
       <view class="chart-title">
         <image class="ai-icon" src="/imgs/chat-active.png" mode="aspectFit"></image>
-        智能法务建议
+        {{t.report.suggestions}}
       </view>
       <view class="suggestion-list">
         <view class="suggestion-item" wx:for="{{suggestions}}" wx:key="*this">

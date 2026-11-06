@@ -1,10 +1,15 @@
 import { createWelcomeRecord, getFeatureWelcomeText } from "./model-request-builder";
 
+const resolveWelcome = (component, featureKey, fallbackWelcome) =>
+  typeof component.getLocalizedFeatureWelcomeText === "function"
+    ? component.getLocalizedFeatureWelcomeText(featureKey)
+    : getFeatureWelcomeText(featureKey, component.data.modelConfig, fallbackWelcome);
+
 export const ensureFeatureConversationState = (component, featureKey, fallbackWelcome) => {
   const key = featureKey || "consult";
   const map = { ...component.data.featureChatRecordsMap };
   if (!map[key] || !map[key].length) {
-    map[key] = [createWelcomeRecord(getFeatureWelcomeText(key, component.data.modelConfig, fallbackWelcome))];
+    map[key] = [createWelcomeRecord(resolveWelcome(component, key, fallbackWelcome))];
   }
   const shouldUseThisFeature = component.data.activeFeatureKey === key;
   component.setData(
@@ -35,7 +40,7 @@ export const switchFeatureConversationState = (component, nextFeatureKey) => {
   // 如果没有任何记录，则追加一条欢迎语
   if (!chatRecords.length) {
     const welcomeRecord = createWelcomeRecord(
-      getFeatureWelcomeText(nextKey, component.data.modelConfig, component.data.modelConfig?.welcomeMsg)
+      resolveWelcome(component, nextKey, component.data.modelConfig?.welcomeMsg)
     );
     chatRecords.push(welcomeRecord);
     map[nextKey] = chatRecords;

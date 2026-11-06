@@ -1,5 +1,8 @@
 // 地图相关的组件
+const i18nBehavior = require("../../../utils/i18n-behavior");
+
 Component({
+  behaviors: [i18nBehavior],
   properties: {
     // 组件的属性列表
     name: {

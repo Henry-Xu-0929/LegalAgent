@@ -1,7 +1,9 @@
 // app.js
+const i18n = require("./utils/i18n");
 
 App({
   onLaunch: function () {
+    i18n.initLanguage();
     if (!wx.cloud) {
       console.error("请使用 2.2.3 或以上的基础库以使用云能力");
     } else {

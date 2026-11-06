@@ -6,29 +6,30 @@ export const checkConfig = (chatMode, agentConfig, modelConfig) => {
   try {
     const systemInfo = wx.getSystemInfoSync();
     if (systemInfo.environment === "wxwork") {
-      return [false, "请前往微信客户端扫码打开小程序"];
+      return [false, "configOpenInWeChat"];
     }
   } catch (e) {
     if (appBaseInfo.host.env === "SDK") {
-      return [false, "请前往微信客户端扫码打开小程序"];
+      return [false, "configOpenInWeChat"];
     }
   }
 
   // 检测AI能力，不存在提示用户
   if (compareVersions(appBaseInfo.SDKVersion, "3.7.7") < 0) {
-    return [false, "使用AI能力需基础库为3.7.7及以上，请升级基础库版本或微信客户端"];
+    return [false, "configBaseLib"];
   }
   if (!["bot",  "model"].includes(chatMode)) {
-    return [false, "chatMode 不正确，值应为“bot”或“model”"];
+    return [false, "configChatMode"];
   }
   if (chatMode === "bot" && !botId) {
-    return [false, "当前chatMode值为bot，请配置botId"];
+    return [false, "configBotId"];
   }
   if (chatMode === "model" && !quickResponseModel) {
-    return [false, "当前chatMode值为model，请配置quickResponseModel"];
+    return [false, "configModel"];
   }
   return [true, ""];
 };
+
 // 随机选取三个问题
 export function randomSelectInitquestion(question = [], num = 3) {
   if (question.length <= num) {
@@ -116,8 +117,7 @@ export const commonRequest = async (options) => {
               isDomainWarn = true;
               wx.showModal({
                 title: "提示",
-                content: msg,
-                complete: () => {
+                content: msg,                complete: () => {
                   isDomainWarn = false;
                 },
               });

@@ -1,6 +1,6 @@
 const cloud = require("wx-server-sdk");
 const https = require("https");
-const { extractFileText } = require("./file-text-extractor");
+const { extractFileText, extractImageText } = require("./file-text-extractor");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 
@@ -20,6 +20,7 @@ const requestJSON = (url, options, body) =>
       }
     }, REQUEST_TIMEOUT_MS);
 
+    
     req = https.request(url, options, (res) => {
       const chunks = [];
       res.on("data", (chunk) => chunks.push(chunk));
@@ -57,7 +58,7 @@ const requestJSON = (url, options, body) =>
 exports.main = async (event, context) => {
   const apiKey = process.env.MODEL_API_KEY || process.env.DEEPSEEK_API_KEY || "";
   const baseURL = process.env.MODEL_BASE_URL || "https://api.deepseek.com/v1/chat/completions";
-  const defaultModelName = process.env.MODEL_NAME || "deepseek-chat";
+  const defaultModelName = process.env.MODEL_NAME || "deepseek-flash";
 
   if (event?.action === "getConfig") {
     return {
@@ -86,6 +87,28 @@ exports.main = async (event, context) => {
         success: false,
         statusCode: 500,
         message: err?.message || "文件解析失败",
+      };
+    }
+  }
+
+  if (event?.action === "extractImageText") {
+    const fileId = event?.fileId || "";
+    const fileName = String(event?.fileName || "image.jpg");
+    if (!fileId) {
+      return {
+        success: false,
+        statusCode: 400,
+        message: "缺少 fileId",
+      };
+    }
+    try {
+      const downloaded = await cloud.downloadFile({ fileID: fileId });
+      return await extractImageText({ downloaded, fileName });
+    } catch (err) {
+      return {
+        success: false,
+        statusCode: 500,
+        message: err?.message || "云端图片识别失败",
       };
     }
   }

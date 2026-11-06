@@ -1,3 +1,13 @@
+// 本地兜底配置。config/model-config.js 已加入 .gitignore，不随仓库提交；
+// 云端下发的配置优先，仅在拿不到云函数配置时使用。
+const i18n = require("../utils/i18n");
+let localModelConfig = {};
+try {
+  localModelConfig = require("../config/model-config.js") || {};
+} catch (e) {
+  console.warn("未找到 config/model-config.js，模型配置将完全依赖云函数下发");
+}
+
 const normalizeModel = (model) => {
   if (model === "model-r1") {
     return "default-chat-model";
@@ -27,14 +37,14 @@ const isFunctionTimeoutError = (err) => {
 
 const parseCloudPayload = (payload) => {
   if (!payload) {
-    return { success: false, errMsg: "云函数调用失败" };
+    return { success: false, errMsg: i18n.t("service.cloudFailed") };
   }
   if (payload.success === false || payload.ok === false) {
     return {
       success: false,
       statusCode: payload.statusCode,
       errCode: payload.errCode,
-      errMsg: payload.message || payload.error || "云函数调用失败",
+      errMsg: payload.message || payload.error || i18n.t("service.cloudFailed"),
     };
   }
   const content = payload.content || payload.answer || payload.result || payload.data?.content || "";
@@ -56,11 +66,63 @@ const callCloudFunction = (name, data) =>
     });
   });
 
-const utf8Decode = (buffer) => {
-  if (typeof TextDecoder !== "undefined") {
-    return new TextDecoder("utf-8").decode(buffer);
+const decodeUtf8Bytes = (bytes) => {
+  let out = "";
+  for (let i = 0; i < bytes.length; i += 1) {
+    const b1 = bytes[i];
+    if (b1 < 0x80) {
+      out += String.fromCharCode(b1);
+      continue;
+    }
+    if ((b1 & 0xe0) === 0xc0) {
+      const b2 = bytes[i + 1];
+      if (typeof b2 === "undefined") break;
+      out += String.fromCharCode(((b1 & 0x1f) << 6) | (b2 & 0x3f));
+      i += 1;
+      continue;
+    }
+    if ((b1 & 0xf0) === 0xe0) {
+      const b2 = bytes[i + 1];
+      const b3 = bytes[i + 2];
+      if (typeof b2 === "undefined" || typeof b3 === "undefined") break;
+      out += String.fromCharCode(
+        ((b1 & 0x0f) << 12) | ((b2 & 0x3f) << 6) | (b3 & 0x3f)
+      );
+      i += 2;
+      continue;
+    }
+    if ((b1 & 0xf8) === 0xf0) {
+      const b2 = bytes[i + 1];
+      const b3 = bytes[i + 2];
+      const b4 = bytes[i + 3];
+      if (
+        typeof b2 === "undefined" ||
+        typeof b3 === "undefined" ||
+        typeof b4 === "undefined"
+      ) break;
+      const codePoint =
+        ((b1 & 0x07) << 18) |
+        ((b2 & 0x3f) << 12) |
+        ((b3 & 0x3f) << 6) |
+        (b4 & 0x3f);
+      out += String.fromCodePoint(codePoint);
+      i += 3;
+      continue;
+    }
+    out += "\ufffd";
   }
-  return String.fromCharCode.apply(null, new Uint8Array(buffer)); // Fallback, might not handle multibyte correctly, but TextDecoder is widely supported
+  return out;
+};
+
+const utf8Decode = (buffer) => {
+  try {
+    if (typeof TextDecoder !== "undefined") {
+      return new TextDecoder("utf-8").decode(buffer);
+    }
+  } catch (e) {
+    console.warn("TextDecoder decode failed, fallback to manual UTF-8 decode");
+  }
+  return decodeUtf8Bytes(new Uint8Array(buffer));
 };
 
 const invokeFunctionAndParse = async (name, data) => {
@@ -111,48 +173,52 @@ const getLastUserQuestion = (messages) => {
       return text.slice(0, 120);
     }
   }
-  return "请描述你的法律问题";
+  return i18n.t("service.defaultQuestion");
 };
 
 const buildTimeoutFallback = (messages) => {
   const question = getLastUserQuestion(messages);
-  return `### 临时法律建议\n你咨询的是：**${question}**\n\n当前模型服务拥堵，我先给你一个可执行分析框架：\n\n1. **先确认事实**：时间、地点、行为方式、涉案金额、是否既遂。\n2. **再对照法条**：结合行为性质判断对应罪名与量刑区间。\n3. **最后定策略**：自首、退赃退赔、认罪认罚、谅解等会影响结果。\n\n请补充案件关键事实，我将继续按【法律咨询】给你具体判断。`;
+  return i18n.t("service.timeoutFallback", { question });
 };
 
 const streamChat = ({ messages, model, maxTokens }, onChunkReceived, onDone, onError) => {
   let aborted = false;
-  const finalModel = normalizeModel(model);
   const parsedMaxTokens = Number(maxTokens);
   const outputMaxTokens = Number.isFinite(parsedMaxTokens) ? Math.max(256, Math.min(parsedMaxTokens, 8192)) : 8192;
   const requestMessages = compactMessages(messages);
   const shouldStop = () => aborted;
   let requestTask = null;
   const invoke = async () => {
-    let lastError = null;
     let hasTimeout = false;
     try {
       let config = null;
       try {
         config = await callCloudFunction("aiChat", { action: "getConfig" });
       } catch (err) {
-        throw new Error("获取模型配置失败：" + (err.message || "未知错误"));
+        console.warn("获取云函数模型配置失败，尝试本地兜底配置：", err?.message || err);
       }
 
       if (shouldStop()) return;
 
-      if (!config || !config.success || !config.apiKey) {
-        throw new Error(config?.message || "配置获取失败，未找到API Key");
-      }
+      // 云端配置优先；云端未下发时回退到本地私有配置文件
+      const apiKey = config?.apiKey || localModelConfig.MODEL_API_KEY || "";
+      const baseURL =
+        config?.baseURL ||
+        localModelConfig.MODEL_BASE_URL ||
+        "https://api.deepseek.com/v1/chat/completions";
+      const actualModel =
+        config?.modelName || localModelConfig.MODEL_NAME || normalizeModel(model);
 
-      const baseURL = config.baseURL || "https://api.deepseek.com/v1/chat/completions";
-      const actualModel = config.modelName || finalModel;
+      if (!apiKey) {
+        throw new Error(config?.message || i18n.t("service.noApiKey"));
+      }
 
       requestTask = wx.request({
         url: baseURL,
         method: "POST",
         header: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${config.apiKey}`,
+          "Authorization": `Bearer ${apiKey}`,
         },
         data: {
           model: actualModel,
@@ -163,7 +229,7 @@ const streamChat = ({ messages, model, maxTokens }, onChunkReceived, onDone, onE
         enableChunked: true,
         success: (res) => {
           if (res.statusCode >= 400) {
-            const err = new Error("请求失败，状态码：" + res.statusCode);
+            const err = new Error(i18n.t("service.requestFailedStatus", { n: res.statusCode }));
             err.statusCode = res.statusCode;
             onError && onError(err);
           } else {
@@ -207,14 +273,14 @@ const streamChat = ({ messages, model, maxTokens }, onChunkReceived, onDone, onE
             try {
               const data = JSON.parse(trimmed.slice(6));
               const delta = data?.choices?.[0]?.delta || {};
-              const reasoningText = delta.reasoning_content;
-              const contentText = delta.content;
-              
-              if (reasoningText) {
-                onChunkReceived && onChunkReceived(reasoningText, true);
+              // 实测 DeepSeek 的 reasoning_content 与 content 分段下发（不同帧），
+              // 但协议未承诺这一点。若同帧同时出现，推理分支必须先于正文分支执行：
+              // 下游回调为异步，正文回调会快照尚未累加的 reasoningContentText。
+              if (delta.reasoning_content) {
+                onChunkReceived && onChunkReceived(delta.reasoning_content, true);
               }
-              if (contentText) {
-                onChunkReceived && onChunkReceived(contentText, false);
+              if (delta.content) {
+                onChunkReceived && onChunkReceived(delta.content, false);
               }
             } catch (e) {
               console.log("JSON parse error for stream chunk", trimmed);

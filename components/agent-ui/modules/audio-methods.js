@@ -1,3 +1,4 @@
+const i18n = require("../../../utils/i18n");
 const { commonRequest, sleep } = require("../tools");
 
 module.exports = {
@@ -71,8 +72,8 @@ module.exports = {
     console.log("handlePlayAudio e", e);
     if (!this.data.bot.voiceSettings?.enable) {
       wx.showModal({
-        title: "提示",
-        content: "请前往腾讯云开发平台启用语音输入输出能力",
+        title: i18n.t("common.notice"),
+        content: i18n.t("agent.voiceUnsupported"),
       });
       return;
     }
@@ -213,7 +214,7 @@ module.exports = {
   handleTouchStart: function (e) {
     if (this.data.chatStatus !== 0 || this.data.voiceRecognizing === true) {
       wx.showToast({
-        title: "请等待对话完成",
+        title: i18n.t("agent.waitForChat"),
         icon: "error",
       });
       return;
@@ -233,7 +234,7 @@ module.exports = {
   handleTouchMove: function (e) {
     if (this.data.chatStatus !== 0 || this.data.voiceRecognizing === true) {
       wx.showToast({
-        title: "请等待对话完成",
+        title: i18n.t("agent.waitForChat"),
         icon: "error",
       });
       return;
@@ -256,7 +257,7 @@ module.exports = {
   handleTouchEnd: function (e) {
     if (this.data.chatStatus !== 0 || this.data.voiceRecognizing === true) {
       wx.showToast({
-        title: "请等待对话完成",
+        title: i18n.t("agent.waitForChat"),
         icon: "error",
       });
       return;

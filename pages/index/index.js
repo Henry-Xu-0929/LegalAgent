@@ -1,17 +1,25 @@
+const i18n = require("../../utils/i18n");
+const { attachPageLanguage } = require("../../utils/i18n-page");
+
 Page({
   data: {
     mode: "login",
     username: "",
     password: "",
     confirmPassword: "",
+    t: {},
   },
   onShow() {
+    i18n.syncShell();
     const authUser = wx.getStorageSync("authUser");
     if (authUser) {
       wx.switchTab({
         url: "/pages/chatBot/chatBot",
       });
     }
+  },
+  onLoad() {
+    attachPageLanguage(this);
   },
   switchMode(e) {
     const mode = e.currentTarget.dataset.mode;
@@ -35,7 +43,7 @@ Page({
     const confirmPassword = this.data.confirmPassword;
     if (!username || !password) {
       wx.showToast({
-        title: "请输入账号和密码",
+        title: i18n.t("auth.errMissing"),
         icon: "none",
       });
       return;
@@ -44,7 +52,7 @@ Page({
       if (mode === "register") {
         if (password !== confirmPassword) {
           wx.showToast({
-            title: "两次密码不一致",
+            title: i18n.t("auth.errPasswordMismatch"),
             icon: "none",
           });
           return;
@@ -60,14 +68,14 @@ Page({
         const registerRes = registerCallRes?.result || {};
         if (!registerRes.ok) {
           wx.showToast({
-            title: registerRes.error || "注册失败",
+            title: registerRes.error || i18n.t("auth.errRegister"),
             icon: "none",
           });
           return;
         }
         wx.setStorageSync("authUser", { username, userId: registerRes.userId });
         wx.showToast({
-          title: "注册成功",
+          title: i18n.t("auth.successRegister"),
           icon: "success",
         });
         wx.switchTab({
@@ -86,7 +94,7 @@ Page({
       const loginRes = loginCallRes?.result || {};
       if (!loginRes.ok) {
         wx.showToast({
-          title: loginRes.error || "登录失败",
+          title: loginRes.error || i18n.t("auth.errLogin"),
           icon: "none",
         });
         return;
@@ -96,7 +104,7 @@ Page({
         userId: loginRes.userId,
       });
       wx.showToast({
-        title: "登录成功",
+        title: i18n.t("auth.successLogin"),
         icon: "success",
       });
       wx.switchTab({
@@ -104,7 +112,7 @@ Page({
       });
     } catch (error) {
       const message =
-        error && error.errMsg ? error.errMsg : "网络异常，请稍后再试";
+        error && error.errMsg ? error.errMsg : i18n.t("auth.errNetwork");
       wx.showToast({
         title: message,
         icon: "none",

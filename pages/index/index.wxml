@@ -1,14 +1,14 @@
 <view class="auth-page">
-  <view class="brand">法律智能体</view>
-  <view class="subtitle">登录后进入对话</view>
+  <view class="brand">{{t.auth.brand}}</view>
+  <view class="subtitle">{{t.auth.subtitle}}</view>
   <view class="tabs">
-    <view class="tab {{mode === 'login' ? 'active' : ''}}" data-mode="login" bindtap="switchMode">登录</view>
-    <view class="tab {{mode === 'register' ? 'active' : ''}}" data-mode="register" bindtap="switchMode">注册</view>
+    <view class="tab {{mode === 'login' ? 'active' : ''}}" data-mode="login" bindtap="switchMode">{{t.auth.login}}</view>
+    <view class="tab {{mode === 'register' ? 'active' : ''}}" data-mode="register" bindtap="switchMode">{{t.auth.register}}</view>
   </view>
   <view class="form">
-    <input class="input" placeholder="账号" value="{{username}}" data-field="username" bindinput="handleInput" />
-    <input class="input" placeholder="密码" password value="{{password}}" data-field="password" bindinput="handleInput" />
-    <input wx:if="{{mode === 'register'}}" class="input" placeholder="确认密码" password value="{{confirmPassword}}" data-field="confirmPassword" bindinput="handleInput" />
+    <input class="input" placeholder="{{t.auth.account}}" value="{{username}}" data-field="username" bindinput="handleInput" />
+    <input class="input" placeholder="{{t.auth.password}}" password value="{{password}}" data-field="password" bindinput="handleInput" />
+    <input wx:if="{{mode === 'register'}}" class="input" placeholder="{{t.auth.confirmPassword}}" password value="{{confirmPassword}}" data-field="confirmPassword" bindinput="handleInput" />
   </view>
-  <button class="submit" bindtap="submit">{{mode === 'login' ? '登录' : '注册并进入'}}</button>
+  <button class="submit" bindtap="submit">{{mode === 'login' ? t.auth.login : t.auth.submitRegister}}</button>
 </view>

@@ -36,15 +36,15 @@
     <!-- 标题 -->
     <view class="route-header">
       <!-- <image class="back-icon" src="/assets/icons/back.png" bindtap="onBack"></image> -->
-      <text class="route-title">路线详情</text>
+      <text class="route-title">{{t.toolCard.routeDetail}}</text>
     </view>
 
     <!-- 路线详情 -->
     <scroll-view class="route-content" scroll-y="true">
       <view class="route-item start">
-        <view class="icon">起</view>
+        <view class="icon">{{t.toolCard.start}}</view>
         <view class="details">
-          <text class="instruction">从我的位置出发</text>
+          <text class="instruction">{{t.toolCard.fromHere}}</text>
         </view>
       </view>
 
@@ -53,14 +53,14 @@
           <image class="icon" src="{{ './assets/' + item.icon + '.svg'}}"></image>
           <view class="details">
             <text class="instruction">{{item.instruction}}</text>
-            <text class="direction">长度 {{item.distance}} 米</text>
+            <text class="direction">{{t.toolCard.lengthPrefix}}{{item.distance}}{{t.toolCard.meterSuffix}}</text>
           </view>
         </view>
       </block>
       <view class="route-item end">
-        <view class="icon">终</view>
+        <view class="icon">{{t.toolCard.end}}</view>
         <view class="details">
-          <text class="instruction">终点</text>
+          <text class="instruction">{{t.toolCard.destination}}</text>
         </view>
       </view>
     </scroll-view>

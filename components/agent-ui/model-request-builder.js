@@ -14,8 +14,17 @@ export const getFeatureWelcomeText = (featureKey, modelConfig, fallbackWelcome) 
   return fallbackWelcome || "你好，有什么我可以帮到你？";
 };
 
+const ENGLISH_OUTPUT_RULES = [
+  "The current UI language is English. Regardless of the language used in these instructions, hidden system notes, or archived documents, every user-visible answer MUST be written entirely in English.",
+  "Keep document numbers, party names, statutes, and archived file titles in their original language, with an English gloss in parentheses on first mention when helpful.",
+  "Do not reply in Chinese unless the user explicitly asks for Chinese.",
+];
+
 export const buildSystemPrompt = (modelConfig) => {
-  const roleName = modelConfig?.roleName || "法律顾问";
+  const isEnglish = modelConfig?.uiLanguage === "en";
+  const roleName = (isEnglish && modelConfig?.displayRoleName)
+    ? modelConfig.displayRoleName
+    : (modelConfig?.roleName || "法律顾问");
   const currentFeatureLabel = modelConfig?.currentFeatureLabel || "法律咨询";
   const capabilities = modelConfig?.businessCapabilities || [
     "法律咨询",
@@ -25,8 +34,8 @@ export const buildSystemPrompt = (modelConfig) => {
     "证据链整理",
     "文书生成",
   ];
-  const capabilityText = capabilities.join("、");
-  return [
+  const capabilityText = capabilities.join(isEnglish ? ", " : "、");
+  const prompt = [
     `你是专业${roleName}，仅使用法律顾问身份回答，不要切换到教练、学习助手或其他人设。`,
     `当前会话主功能是：${currentFeatureLabel}。`,
     `当用户仅仅发送打招呼（如“你好”、“在吗”）或询问你能做什么时，请务必直接围绕当前主功能【${currentFeatureLabel}】进行自我介绍和引导，告诉用户在这个窗口下你能帮他们做什么（例如在“合同起草”窗口中，直接问需要起草什么类型的合同），不要主动列出所有其他业务范围。`,
@@ -40,7 +49,11 @@ export const buildSystemPrompt = (modelConfig) => {
     `当主功能是“合同起草”时，优先直接输出完整合同正文；如信息不足，请在合同条款内使用“【待确认】”占位，不要先输出“需确认的事实与信息”或“合同前提建议”作为主内容。`,
     `当用户需求不明确时，先澄清案件事实与目标；输出要结构化、可执行，并明确适用条件与风险提示。`,
     `只有当用户诉求明显超出法律业务范围时，才可说明边界；即便如此也要给出最接近的法律相关建议，不得空拒绝。`,
-  ].join("");
+  ];
+  if (isEnglish) {
+    return [...ENGLISH_OUTPUT_RULES, ...prompt, ENGLISH_OUTPUT_RULES[0]].join("");
+  }
+  return prompt.join("");
 };
 
 export const buildRequestMessages = ({

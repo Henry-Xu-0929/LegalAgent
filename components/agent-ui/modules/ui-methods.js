@@ -1,3 +1,5 @@
+const i18n = require("../../../utils/i18n");
+
 module.exports = {
   toBottom: async function (unit) {
     const now = Date.now();
@@ -43,7 +45,7 @@ module.exports = {
       data: content,
       success: function () {
         wx.showToast({
-          title: "复制成功",
+          title: i18n.t("common.copySuccess"),
           icon: "success",
         });
       },
@@ -60,7 +62,7 @@ module.exports = {
       data: url,
       success: function () {
         wx.showToast({
-          title: "复制成功",
+          title: i18n.t("common.copySuccess"),
           icon: "success",
         });
       },
@@ -111,15 +113,15 @@ module.exports = {
   handleClickWebSearch: function () {
     if (!this.data.useWebSearch && !this.data.bot.searchEnable) {
       wx.showModal({
-        title: "提示",
-        content: "请前往腾讯云开发平台启用 Agent 联网搜索功能",
+        title: i18n.t("common.notice"),
+        content: i18n.t("agent.webSearchUnsupported"),
       });
       return;
     }
     if (this.data.sendFileList.length) {
       wx.showModal({
-        title: "提示",
-        content: "上传附件后不支持联网搜索",
+        title: i18n.t("common.notice"),
+        content: i18n.t("agent.webSearchWithAttachment"),
       });
       return;
     }

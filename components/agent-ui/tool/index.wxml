@@ -3,15 +3,15 @@
     <image wx:if="{{toolStatus==='running'}}" class="icon" src="../imgs/loading.svg" mode="aspectFill" />
     <image wx:if="{{toolStatus==='success'}}" class="icon" src="../imgs/check.svg" mode="aspectFill" />
     <image wx:if="{{toolStatus==='failed'}}" class="icon" src="../imgs/close-red.svg" mode="aspectFill" />
-    <view class="title">调用工具：{{toolName}}</view>
+    <view class="title">{{t.agent.toolCallPrefix}}{{toolName}}</view>
     <image class="arrow" style="transform: rotate({{isExpanded?0:-90}}deg);" src="../imgs/arrow.svg"
       mode="aspectFill" />
   </view>
   <view class="content" style='display: {{isExpanded?"block":"none"}}'>
-    <view class="content-title">参数:</view>
+    <view class="content-title">{{t.agent.toolParams}}</view>
     <view>{{parsedParams}}</view>
     <view class="divider"></view>
-    <view class="content-title">调用结果:</view>
+    <view class="content-title">{{t.agent.toolResult}}</view>
     <view>{{parsedResult}}</view>
   </view>
 </view>

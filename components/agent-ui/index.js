@@ -6,6 +6,8 @@ import {
   switchFeatureConversationState,
 } from "./feature-conversation-manager";
 import { createWelcomeRecord, getFeatureWelcomeText } from "./model-request-builder";
+const i18n = require("../../utils/i18n");
+const i18nBehavior = require("../../utils/i18n-behavior");
 const conversationMethods = require("./modules/conversation-methods");
 const fileMethods = require("./modules/file-methods");
 const audioMethods = require("./modules/audio-methods");
@@ -15,6 +17,7 @@ const uiMethods = require("./modules/ui-methods");
 const voiceMenuMethods = require("./modules/voice-menu-methods");
 const scrollInputMethods = require("./modules/scroll-input-methods");
 Component({
+  behaviors: [i18nBehavior],
   /**
    * 组件的属性列表
    */
@@ -166,13 +169,13 @@ Component({
     page: 1,
     size: 10,
     total: 0,
-    refreshText: "下拉加载历史记录",
+    refreshText: "",
     shouldAddScrollTop: false,
     isShowFeedback: false,
     feedbackRecordId: "",
     feedbackType: "",
     textareaHeight: 50,
-    defaultErrorMsg: "网络繁忙，请稍后重试!",
+    defaultErrorMsg: "",
     curScrollHeight: 0,
     isDrawerShow: false,
     conversations: [],
@@ -215,6 +218,10 @@ Component({
     userAvatarUrl: "",
   },
   attached: async function () {
+    this.setData({
+      refreshText: i18n.t("agent.refreshDefault"),
+      defaultErrorMsg: i18n.t("agent.defaultError"),
+    });
     const authUser = wx.getStorageSync("authUser") || {};
     this.setData({
       userAvatarUrl: authUser.avatarUrl || authUser.avatar || "",
@@ -227,8 +234,8 @@ Component({
     const [check, message] = checkConfig(chatMode, this.data.agentConfig, this.data.modelConfig);
     if (!check) {
       wx.showModal({
-        title: "提示",
-        content: message,
+        title: this.data.t.notice || i18n.t("common.notice"),
+        content: i18n.t(`agent.${message}`),
       });
       return;
     }
@@ -248,7 +255,7 @@ Component({
       // 新增错误提示
       if (bot.code) {
         wx.showModal({
-          title: "提示",
+          title: this.data.t.notice || i18n.t("common.notice"),
           content: bot.message,
         });
         return;
@@ -256,7 +263,7 @@ Component({
 
       // 初始化第一条记录为welcomeMessage
       const record = {
-        content: bot.welcomeMessage || "你好，有什么我可以帮到你？",
+        content: bot.welcomeMessage || i18n.t("agent.welcomeDefault"),
         record_id: "record_id" + String(+new Date() + 10),
         role: "assistant",
         hiddenBtnGround: true,
@@ -357,6 +364,64 @@ Component({
     }
   },
   methods: Object.assign({}, conversationMethods, fileMethods, audioMethods, agentV2Methods, chatCoreMethods, uiMethods, voiceMenuMethods, scrollInputMethods, {
+    onLanguageChanged: function () {
+      this.setData({
+        refreshText: i18n.t("agent.refreshDefault"),
+        defaultErrorMsg: i18n.t("agent.defaultError"),
+      });
+      if (this.data.isAgent) {
+        return;
+      }
+      // 欢迎语是界面文案，始终跟随当前语言；真实对话记录保持原语言。
+      // featureChatRecordsMap 必须同步更新，否则之后切换 feature 会拿回旧语言的欢迎语。
+      const activeKey =
+        this.data.activeFeatureKey ||
+        this.data.modelConfig?.currentFeatureKey ||
+        "consult";
+      const map = this.data.featureChatRecordsMap || {};
+      const nextMap = {};
+      Object.keys(map).forEach((key) => {
+        const list = Array.isArray(map[key]) ? map[key] : [];
+        const welcomeIndex = list.findIndex((item) => item?.isWelcome);
+        if (welcomeIndex < 0) {
+          nextMap[key] = list;
+          return;
+        }
+        // 历史记录中的欢迎语曾被隐藏；替换后保持隐藏状态，避免界面突然多出一条
+        const hidden = !!list[welcomeIndex].hideInUI;
+        const welcome = {
+          ...createWelcomeRecord(this.resolveFeatureWelcomeText(key)),
+          hideInUI: hidden,
+        };
+        nextMap[key] = [...list.slice(0, welcomeIndex), welcome, ...list.slice(welcomeIndex + 1)];
+      });
+      const records = this.data.chatRecords || [];
+      const chatWelcomeIndex = records.findIndex((item) => item?.isWelcome);
+      const payload = { featureChatRecordsMap: nextMap };
+      if (chatWelcomeIndex >= 0) {
+        const hidden = !!records[chatWelcomeIndex].hideInUI;
+        const nextRecords = [...records];
+        nextRecords[chatWelcomeIndex] = {
+          ...createWelcomeRecord(this.resolveFeatureWelcomeText(activeKey)),
+          hideInUI: hidden,
+        };
+        payload.chatRecords = nextRecords;
+      }
+      this.setData(payload);
+    },
+    // 直接读语言包，避免依赖父页面 modelConfig 异步下发新语言字典
+    resolveFeatureWelcomeText: function (featureKey) {
+      const key = `chat.welcome.${featureKey || "consult"}`;
+      const text = i18n.t(key);
+      if (text === key) {
+        return getFeatureWelcomeText(featureKey, this.data.modelConfig);
+      }
+      return text;
+    },
+    // 供 feature-conversation-manager 等外部模块调用
+    getLocalizedFeatureWelcomeText: function (featureKey) {
+      return this.resolveFeatureWelcomeText(featureKey);
+    },
     getMiniProgramEnvVersion: function () {
       try {
         return wx.getAccountInfoSync()?.miniProgram?.envVersion || "release";
@@ -508,9 +573,7 @@ Component({
         chatRecords = featureMap[activeFeatureKey] || [];
         
         // 追加一条新的、可见的 Welcome 消息
-        const welcomeRecord = createWelcomeRecord(
-          getFeatureWelcomeText(activeFeatureKey, this.data.modelConfig, this.data.modelConfig?.welcomeMsg)
-        );
+        const welcomeRecord = createWelcomeRecord(this.resolveFeatureWelcomeText(activeFeatureKey));
         chatRecords.push(welcomeRecord);
         featureMap[activeFeatureKey] = chatRecords;
 

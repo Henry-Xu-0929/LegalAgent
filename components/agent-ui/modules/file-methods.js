@@ -1,5 +1,6 @@
 const { getCloudInstance, sleep } = require("../tools");
 const md5 = require("../md5.js").default || require("../md5.js");
+const i18n = require("../../../utils/i18n");
 
 module.exports = {
   chooseMedia: function (sourceType) {
@@ -14,7 +15,7 @@ module.exports = {
         const isImageSizeValid = res.tempFiles.every((item) => item.size <= 30 * 1024 * 1024);
         if (!isImageSizeValid) {
           wx.showToast({
-            title: "图片大小30M限制",
+            title: i18n.t("agent.imageSizeLimit"),
             icon: "error",
           });
           return;
@@ -23,7 +24,10 @@ module.exports = {
           const tempFileInfos = item.tempFilePath.split(".");
           const tempFileName = md5(tempFileInfos[0]) + "." + tempFileInfos[1];
           const isModelMode = self.data.chatMode === "model";
-          const ocrText = isModelMode ? await self.extractImageText(item.tempFilePath) : "";
+          const ocrResult = isModelMode
+            ? await self.extractImageTextWithTrace(item.tempFilePath)
+            : { text: "", trace: [] };
+          const ocrText = String(ocrResult?.text || "");
           return {
             tempId: tempFileName,
             rawType: item.fileType,
@@ -36,6 +40,9 @@ module.exports = {
             botId: self.data.agentConfig.botId,
             status: isModelMode ? "parsed" : "",
             ocrText,
+            ocrDebug: Array.isArray(ocrResult?.trace)
+              ? ocrResult.trace.map((step) => `${step.step}:${step.ok ? "ok" : "fail"}${step.detail ? `(${step.detail})` : ""}`).join(" | ")
+              : "",
           };
         }));
         const finalFileList = [...tempFiles];
@@ -54,10 +61,22 @@ module.exports = {
         }
         if (self.data.chatMode === "model") {
           const recognizedCount = finalFileList.filter((item) => !!item.ocrText).length;
-          wx.showToast({
-            title: recognizedCount > 0 ? `已识别${recognizedCount}张图片` : "未识别到文字",
-            icon: recognizedCount > 0 ? "success" : "none",
-          });
+          if (recognizedCount > 0) {
+            wx.showToast({
+              title: i18n.t("agent.imagesRecognized", { n: recognizedCount }),
+              icon: "success",
+            });
+          } else {
+            const firstDebug = finalFileList.find((item) => item.rawType === "image" && item.ocrDebug)?.ocrDebug || "";
+            const detail = firstDebug || i18n.t("agent.ocrUnavailable");
+            wx.showModal({
+              title: i18n.t("agent.ocrTitle"),
+              content: `${i18n.t("agent.ocrDetailPrefix")}${detail.slice(0, 600)}`,
+              showCancel: false,
+              confirmText: i18n.t("agent.gotIt"),
+            });
+            console.warn("OCR_UPLOAD_FAIL_TRACE:", detail);
+          }
         }
       },
     });
@@ -66,15 +85,15 @@ module.exports = {
     const isModelMode = this.data.chatMode === "model";
     if (!isModelMode && !this.data.isAgent && !this.data.bot.searchFileEnable) {
       wx.showModal({
-        title: "提示",
-        content: "请前往腾讯云开发平台启用 Agent 图片上传功能",
+        title: i18n.t("common.notice"),
+        content: i18n.t("agent.imageUploadUnsupported"),
       });
       return;
     }
     if (!isModelMode && this.data.useWebSearch) {
       wx.showModal({
-        title: "提示",
-        content: "联网搜索不支持上传文件/图片",
+        title: i18n.t("common.notice"),
+        content: i18n.t("agent.webSearchWithAttachment"),
       });
       return;
     }
@@ -82,11 +101,11 @@ module.exports = {
     const isCurSendFile = this.data.sendFileList.find((item) => item.rawType === "file");
     if (isCurSendFile) {
       wx.showModal({
-        title: "确认替换吗",
-        content: "上传图片将替换当前文件内容",
+        title: i18n.t("agent.replaceConfirm"),
+        content: i18n.t("agent.replaceImageContent"),
         showCancel: "true",
-        cancelText: "取消",
-        confirmText: "确认",
+        cancelText: i18n.t("common.cancel"),
+        confirmText: i18n.t("common.confirm"),
         success() {
           self.chooseMedia(sourceType);
         },
@@ -102,7 +121,7 @@ module.exports = {
     const subFileCount = oldFileLen <= 5 ? 5 - oldFileLen : 0;
     if (subFileCount === 0) {
       wx.showToast({
-        title: "文件数量限制5个",
+        title: i18n.t("agent.fileCountLimit"),
         icon: "error",
       });
       return;
@@ -114,7 +133,7 @@ module.exports = {
         const isFileSizeValid = res.tempFiles.every((item) => item.size <= 30 * 1024 * 1024);
         if (!isFileSizeValid) {
           wx.showToast({
-            title: "单文件30M限制",
+            title: i18n.t("agent.fileSizeLimit"),
             icon: "error",
           });
           return;
@@ -157,7 +176,7 @@ module.exports = {
         }
         if (isModelMode) {
           wx.showToast({
-            title: "已添加文件",
+            title: i18n.t("agent.fileAdded"),
             icon: "success",
           });
         }
@@ -171,15 +190,15 @@ module.exports = {
     const isModelMode = this.data.chatMode === "model";
     if (!isModelMode && !this.data.isAgent && !this.data.bot.searchFileEnable) {
       wx.showModal({
-        title: "提示",
-        content: "请前往腾讯云开发平台启用 Agent 文件上传功能",
+        title: i18n.t("common.notice"),
+        content: i18n.t("agent.fileUploadUnsupported"),
       });
       return;
     }
     if (!isModelMode && this.data.useWebSearch) {
       wx.showModal({
-        title: "提示",
-        content: "联网搜索不支持上传文件/图片",
+        title: i18n.t("common.notice"),
+        content: i18n.t("agent.webSearchWithAttachment"),
       });
       return;
     }
@@ -187,11 +206,11 @@ module.exports = {
     const isCurSendImage = this.data.sendFileList.find((item) => item.rawType === "image");
     if (isCurSendImage) {
       wx.showModal({
-        title: "确认替换吗",
-        content: "上传文件将替换当前图片内容",
+        title: i18n.t("agent.replaceConfirm"),
+        content: i18n.t("agent.replaceFileContent"),
         showCancel: "true",
-        cancelText: "取消",
-        confirmText: "确认",
+        cancelText: i18n.t("common.cancel"),
+        confirmText: i18n.t("common.confirm"),
         success() {
           self.chooseMessageFile();
         },
@@ -209,46 +228,367 @@ module.exports = {
   handleCamera: function () {
     this.handleUploadImg("camera");
   },
-  extractImageText: function (filePath) {
-    return new Promise((resolve) => {
-      if (!wx.ocr) {
+  extractImageText: async function (filePath) {
+    const result = await this.extractImageTextWithTrace(filePath);
+    return String(result?.text || "");
+  },
+  extractImageTextWithTrace: async function (filePath) {
+    const trace = [];
+    let serviceMarketBlocked = false;
+    const pushTrace = (step, ok, detail) => {
+      trace.push({
+        step,
+        ok: !!ok,
+        detail: String(detail || "").slice(0, 180),
+      });
+    };
+    const normalizeDetail = (detail) => String(detail || "")
+      .replace(/requestId[:：]?\s*[\w\-_.]+/ig, "requestId:<hidden>")
+      .replace(/\s+/g, " ")
+      .trim();
+    const isServiceMarketDisabled = (detail) => {
+      const source = String(detail || "").toLowerCase();
+      return source.includes("930101")
+        || source.includes("930010")
+        || source.includes("consumption failure")
+        || source.includes("余额")
+        || source.includes("欠费");
+    };
+    const toErrorDetail = (payload) => {
+      const source = payload?.errMsg
+        || payload?.message
+        || payload?.error
+        || payload?.msg
+        || payload?.statusCode
+        || payload?.errno
+        || payload?.code;
+      return normalizeDetail(source);
+    };
+    const parseServiceError = (res) => {
+      const root = res?.data || res?.result || res || {};
+      const source = typeof root === "string" ? (() => {
+        try {
+          return JSON.parse(root);
+        } catch (e) {
+          return { raw: root };
+        }
+      })() : root;
+      const errCode = source?.errCode || source?.errno || source?.code || source?.errorCode || source?.error_code;
+      const errMsg = source?.errMsg || source?.errmsg || source?.message || source?.error || source?.msg || "";
+      if (errCode || errMsg) {
+        return normalizeDetail(`code=${errCode || "unknown"},msg=${String(errMsg || "").slice(0, 120)}`);
+      }
+      return "";
+    };
+    const parseText = (step, res) => {
+      const text = String(this.parseOcrText(res) || "").trim();
+      if (text) {
+        pushTrace(step, true, `len=${text.length}`);
+      } else {
+        const hint = parseServiceError(res) || toErrorDetail(res) || "empty";
+        pushTrace(step, false, hint);
+      }
+      return text;
+    };
+    const invokeServiceMarket = (step, data) => new Promise((resolve) => {
+      if (serviceMarketBlocked) {
+        pushTrace(step, false, "skip(service unavailable)");
+        resolve("");
+        return;
+      }
+      if (!wx.serviceMarket) {
+        pushTrace(step, false, "wx.serviceMarket unavailable");
+        resolve("");
+        return;
+      }
+      wx.serviceMarket.invokeService({
+        service: "wx79ac3de8be320b71",
+        api: "OcrAllInOne",
+        data,
+      }).then((res) => {
+        const text = parseText(step, res);
+        if (!text) {
+          const detail = trace[trace.length - 1]?.detail || "";
+          if (isServiceMarketDisabled(detail)) {
+            serviceMarketBlocked = true;
+          }
+        }
+        resolve(text);
+      }).catch((err) => {
+        const detail = toErrorDetail(err) || "invoke failed";
+        pushTrace(step, false, detail);
+        if (isServiceMarketDisabled(detail)) {
+          serviceMarketBlocked = true;
+        }
+        resolve("");
+      });
+    });
+    const callWxPrintedText = () => new Promise((resolve) => {
+      if (!wx.ocr || typeof wx.ocr.printedText !== "function") {
+        pushTrace("wx.ocr.printedText", false, "unavailable");
+        resolve("");
+        return;
+      }
+      wx.ocr.printedText({
+        imagePath: filePath,
+        success: (res) => resolve(parseText("wx.ocr.printedText", res)),
+        fail: (err) => {
+          pushTrace("wx.ocr.printedText", false, toErrorDetail(err));
+          resolve("");
+        },
+      });
+    });
+    const callWxGeneralOcr = () => new Promise((resolve) => {
+      if (!wx.ocr || typeof wx.ocr !== "function") {
+        pushTrace("wx.ocr.general", false, "unavailable");
         resolve("");
         return;
       }
       wx.ocr({
         type: "ocrGeneral",
         filePath,
-        success: (res) => {
-          resolve(this.parseOcrText(res));
-        },
-        fail: () => {
+        success: (res) => resolve(parseText("wx.ocr.general", res)),
+        fail: (err) => {
+          pushTrace("wx.ocr.general", false, toErrorDetail(err));
           resolve("");
         },
       });
     });
+    const readBase64 = () => new Promise((resolve) => {
+      try {
+        wx.getFileSystemManager().readFile({
+          filePath,
+          encoding: "base64",
+          success: (res) => resolve(String(res?.data || "")),
+          fail: (err) => {
+            pushTrace("read.base64", false, toErrorDetail(err));
+            resolve("");
+          },
+        });
+      } catch (e) {
+        pushTrace("read.base64", false, toErrorDetail(e));
+        resolve("");
+      }
+    });
+    const uploadToCloud = async () => {
+      try {
+        const ext = String(filePath || "").split(".").pop() || "jpg";
+        const cloudPath = `ocr-temp/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const uploadRes = await wx.cloud.uploadFile({
+          cloudPath,
+          filePath,
+        });
+        const fileID = String(uploadRes?.fileID || "");
+        if (!fileID) {
+          pushTrace("cloud.upload", false, "empty fileID");
+          return "";
+        }
+        pushTrace("cloud.upload", true, "ok");
+        return fileID;
+      } catch (e) {
+        pushTrace("cloud.upload", false, toErrorDetail(e));
+        return "";
+      }
+    };
+    const callBotVision = async (fileId) => {
+      const botId = String(
+        this.data?.agentConfig?.botId
+        || this.data?.bot?.botId
+        || ""
+      );
+      if (!botId) {
+        pushTrace("bot.vision", false, "missing botId");
+        return "";
+      }
+      try {
+        const cloudInstance = await getCloudInstance(this.data.envShareConfig);
+        const ai = cloudInstance.extend.AI;
+        const res = await Promise.race([
+          ai.bot.sendMessage({
+            data: {
+              botId,
+              msg: "请逐字提取图片中的全部文字，只输出识别结果，不要解释。",
+              files: [fileId],
+              searchEnable: false,
+              stream: false,
+            },
+          }),
+          sleep(60000).then(() => Promise.reject(new Error("BOT_OCR_TIMEOUT"))),
+        ]);
+        const text = String(this.extractTextFromPayload(res) || "").trim();
+        if (text) {
+          pushTrace("bot.vision", true, `len=${text.length}`);
+          return text;
+        }
+        pushTrace("bot.vision", false, "empty");
+        return "";
+      } catch (e) {
+        pushTrace("bot.vision", false, toErrorDetail(e));
+        return "";
+      }
+    };
+    const callCloudModelOcr = async (fileId) => {
+      try {
+        const ext = this.getFileExt(filePath) || "jpg";
+        const text = String(await this.extractImageTextByCloud(fileId, `ocr.${ext}`) || "").trim();
+        if (text) {
+          pushTrace("cloud.modelOCR", true, `len=${text.length}`);
+          return text;
+        }
+        pushTrace("cloud.modelOCR", false, "empty");
+        return "";
+      } catch (e) {
+        const detail = toErrorDetail(e);
+        if (String(detail).includes("MODEL_TEXT_ONLY")) {
+          pushTrace("cloud.modelOCR", false, "MODEL_TEXT_ONLY(当前DeepSeek通道不支持图片输入)");
+        } else {
+          pushTrace("cloud.modelOCR", false, detail);
+        }
+        return "";
+      }
+    };
+
+    let text = await callWxPrintedText();
+    if (text) {
+      return { text, trace };
+    }
+    text = await callWxGeneralOcr();
+    if (text) {
+      return { text, trace };
+    }
+
+    const cloudFileId = await uploadToCloud();
+    if (cloudFileId) {
+      text = await callCloudModelOcr(cloudFileId);
+      if (text) {
+        return { text, trace };
+      }
+      text = await callBotVision(cloudFileId);
+      if (text) {
+        return { text, trace };
+      }
+      text = await invokeServiceMarket("serviceMarket.fileID", {
+        img_url: cloudFileId,
+        data_type: 3,
+        ocr_type: 8,
+      });
+      if (text) {
+        return { text, trace };
+      }
+    }
+
+    text = await invokeServiceMarket("serviceMarket.cdnPath", {
+      img_url: new wx.cloud.CDN({ type: "filePath", filePath }),
+      data_type: 3,
+      ocr_type: 8,
+    });
+    if (text) {
+      return { text, trace };
+    }
+
+    const base64 = await readBase64();
+    if (base64) {
+      text = await invokeServiceMarket("serviceMarket.base64A", {
+        img_base64: base64,
+        data_type: 2,
+        ocr_type: 8,
+      });
+      if (!text) {
+        text = await invokeServiceMarket("serviceMarket.base64B", {
+          img_data: base64,
+          data_type: 2,
+          ocr_type: 8,
+        });
+      }
+      if (!text) {
+        text = await invokeServiceMarket("serviceMarket.base64C", {
+          img_base64: base64,
+          ocr_type: 8,
+        });
+      }
+      if (text) {
+        return { text, trace };
+      }
+    }
+
+    console.warn("OCR all strategies failed:", trace);
+    return {
+      text: "",
+      trace,
+    };
   },
   parseOcrText: function (ocrRes) {
-    if (!ocrRes) {
-      return "";
+    if (!ocrRes) return "";
+    let source = ocrRes;
+
+    if (typeof ocrRes.data === "string") {
+      try { source = JSON.parse(ocrRes.data); } catch (e) { source = ocrRes; }
+    } else if (ocrRes.data) {
+      source = ocrRes.data;
     }
-    const source = typeof ocrRes.data === "string"
-      ? (() => {
-        try {
-          return JSON.parse(ocrRes.data);
-        } catch (e) {
-          return ocrRes;
+
+    if (source && source.ocr_res) {
+      try {
+        source = typeof source.ocr_res === "string" ? JSON.parse(source.ocr_res) : source.ocr_res;
+      } catch (e) {}
+    }
+
+    if (source && source.result && typeof source.result === 'object') {
+      if (Array.isArray(source.result.items) || Array.isArray(source.result.words_result) || Array.isArray(source.result.PrintedText)) {
+        source = source.result;
+      }
+    }
+
+    let textArr = [];
+    const extractFromArray = (arr) => {
+      if (!Array.isArray(arr)) return false;
+      const texts = arr.map(item => item.text || item.words || item.Text || item.Word).filter(Boolean);
+      if (texts.length > 0) {
+        textArr = texts;
+        return true;
+      }
+      return false;
+    };
+
+    if (extractFromArray(source.items)) return textArr.join("\n").trim();
+    if (extractFromArray(source.words_result)) return textArr.join("\n").trim();
+    if (extractFromArray(source.PrintedText)) return textArr.join("\n").trim();
+    if (extractFromArray(source)) return textArr.join("\n").trim();
+
+    // Deep fallback: recursively pull text-like fields from any nested structure
+    const collected = [];
+    const visited = new Set();
+    const walk = (node) => {
+      if (!node || visited.has(node)) return;
+      if (typeof node === "object") {
+        visited.add(node);
+      }
+      if (typeof node === "string") return;
+      if (Array.isArray(node)) {
+        node.forEach(walk);
+        return;
+      }
+      if (typeof node !== "object") return;
+      Object.keys(node).forEach((key) => {
+        const val = node[key];
+        const lowerKey = String(key).toLowerCase();
+        if (typeof val === "string") {
+          if (/(text|word|content|sentence|line)/.test(lowerKey) && val.trim()) {
+            collected.push(val.trim());
+          }
+        } else {
+          walk(val);
         }
-      })()
-      : (ocrRes.result || ocrRes);
-    if (Array.isArray(source.words_result)) {
-      return source.words_result.map((item) => item.words).filter(Boolean).join("\n").trim();
+      });
+    };
+    walk(source);
+    if (collected.length > 0) {
+      return collected.join("\n").trim();
     }
-    if (Array.isArray(source.items)) {
-      return source.items.map((item) => item.text || item.words).filter(Boolean).join("\n").trim();
-    }
-    if (typeof source.text === "string") {
-      return source.text.trim();
-    }
+
+    if (typeof source.text === "string") return source.text.trim();
+    if (typeof source.words === "string") return source.words.trim();
+
     return "";
   },
   getFileExt: function (fileName) {
@@ -313,6 +653,55 @@ module.exports = {
       }
       await sleep(500);
       return await invokeExtract();
+    }
+  },
+  extractImageTextByCloud: async function (fileId, fileName) {
+    const invokeExtract = () => new Promise((resolve, reject) => {
+      wx.cloud.callFunction({
+        name: "aiChat",
+        data: {
+          action: "extractImageText",
+          fileId,
+          fileName,
+        },
+        success: (res) => {
+          const result = res?.result || {};
+          if (result.success && result.text) {
+            resolve(String(result.text));
+            return;
+          }
+          reject(new Error(result.message || "云端图片识别失败"));
+        },
+        fail: (err) => {
+          const detail = err?.errMsg || err?.message || "云端图片识别失败";
+          reject(new Error(detail));
+        },
+      });
+    });
+    try {
+      return await invokeExtract();
+    } catch (err) {
+      const detail = String(err?.message || "");
+      const isTimeout = detail.includes("FUNCTIONS_TIME_LIMIT_EXCEEDED")
+        || detail.includes("timed out")
+        || detail.includes("errCode: -504003");
+      if (!isTimeout) {
+        throw err;
+      }
+      // Retry once after timeout, then fallback to generic file extractor (now supports image OCR).
+      await sleep(500);
+      try {
+        return await invokeExtract();
+      } catch (retryErr) {
+        const retryDetail = String(retryErr?.message || "");
+        const stillTimeout = retryDetail.includes("FUNCTIONS_TIME_LIMIT_EXCEEDED")
+          || retryDetail.includes("timed out")
+          || retryDetail.includes("errCode: -504003");
+        if (!stillTimeout) {
+          throw retryErr;
+        }
+        return await this.extractModelFileTextByCloud(fileId, fileName);
+      }
     }
   },
   ensureModelFilesReadyByBot: async function (fileList) {

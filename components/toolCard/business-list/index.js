@@ -1,4 +1,8 @@
+const i18n = require("../../../utils/i18n");
+const i18nBehavior = require("../../../utils/i18n-behavior");
+
 Component({
+  behaviors: [i18nBehavior],
   properties: {
     // 组件的属性列表
     name: {
@@ -26,7 +30,7 @@ Component({
         phoneNumber: phone,
         fail: () => {
           wx.showToast({
-            title: "呼叫失败",
+            title: i18n.t("toolCard.callFailed"),
             icon: "none",
           });
         },

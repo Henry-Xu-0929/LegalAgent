@@ -8,7 +8,7 @@
       </view>
     </view>
     <text class="city-text">{{city}} {{isDay ? today.daytemp : today.nighttemp}}{{currentUnit}}</text>
-    <text class="high-low-text">最高:{{today.daytemp}}° 最低:{{today.nighttemp}}°</text>
+    <text class="high-low-text">{{t.toolCard.high}}:{{today.daytemp}}° {{t.toolCard.low}}:{{today.nighttemp}}°</text>
   </view>
   <view class="hourly-container">
     <block wx:for="{{forecasts}}" wx:key="date">

@@ -63,6 +63,17 @@
   color: #333333;
 }
 
+.menu-value {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.menu-value-text {
+  font-size: 28rpx;
+  color: #888888;
+}
+
 .text-danger {
   color: #ff4d4f;
 }

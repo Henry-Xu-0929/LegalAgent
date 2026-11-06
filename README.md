@@ -124,9 +124,12 @@ npm install --prefix cloudfunctions/report
 
 - `MODEL_API_KEY`：必填，DeepSeek API Key
 - `MODEL_BASE_URL`：可选，默认 `https://api.deepseek.com/v1/chat/completions`
-- `MODEL_NAME`：可选，默认 `deepseek-chat`
+- `MODEL_NAME`：可选，默认 `deepseek-flash`
 
 最小可用配置：只填 `MODEL_API_KEY` 即可跑通。
+
+> 注意：主聊天链路为了流式输出，是**小程序端直连 DeepSeek** 的，Key 由云函数 `getConfig`
+> 下发给前端。因此除了云函数环境变量，前端也需要一份可用的 Key —— 见 5.4。
 
 可直接复制的云函数环境变量示例（JSON）：
 
@@ -134,9 +137,31 @@ npm install --prefix cloudfunctions/report
 {
   "MODEL_API_KEY": "sk-xxxxxx",
   "MODEL_BASE_URL": "https://api.deepseek.com/v1/chat/completions",
-  "MODEL_NAME": "deepseek-chat"
+  "MODEL_NAME": "deepseek-flash"
 }
 ```
+
+### 5.4 前端私有配置（主聊天链路必做）
+
+主聊天的流式请求由 `services/ai-chat-stream-service.js` 直接发往 DeepSeek，
+配置读取顺序为：**云函数 `getConfig` 下发 → `config/model-config.js` 兜底**。
+
+因此在本地新建 `config/model-config.js`（该文件已在 `.gitignore` 中，不会提交）：
+
+```javascript
+module.exports = {
+  MODEL_API_KEY: "sk-xxxxxx",
+  MODEL_BASE_URL: "https://api.deepseek.com/v1/chat/completions",
+  MODEL_NAME: "deepseek-flash",
+};
+```
+
+两项配套设置：
+
+1. 微信公众平台 →「开发管理 → 开发设置 → 服务器域名 → request 合法域名」
+   添加 `https://api.deepseek.com`（必须是备案过的 HTTPS 域名）。
+   本地联调可在微信开发者工具「详情 → 本地设置」勾选「不校验合法域名」。
+2. 云函数 `aiChat` 的超时时间建议设为 20-60 秒（仓库内 `config.json` 已配 60 秒）。
 
 ### 5.3 接入你自己的训练模型
 
@@ -256,5 +281,7 @@ git push -u origin feature/xxx
 ## 10. 安全与提交注意事项
 
 - 不要提交密钥、私有证书、个人环境变量。
+- `config/model-config.js` 含 API Key，已在 `.gitignore` 中，请勿用 `git add -f` 强行提交。
+- 若 Key 已误提交，请立即到 DeepSeek 控制台吊销并重新申请。
 - `project.private.config.json` 已建议忽略，不要加入版本控制。
 - 切换到自己云环境前，务必确认 `app.js` 中的 `env` 已替换。

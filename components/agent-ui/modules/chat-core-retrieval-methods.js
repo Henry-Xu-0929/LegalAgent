@@ -1,3 +1,5 @@
+const i18n = require("../../../utils/i18n");
+
 module.exports = {
   normalizeRetrievalToken: function (value) {
     return String(value || "")
@@ -520,7 +522,12 @@ module.exports = {
         best = item;
       }
     });
-    return bestScore > 0 ? best : list[0];
+    
+    const hasPartyHints = (querySignals.partyTokens || []).length > 0;
+    const hasDocIntentHints = (querySignals.docIntentTokens || []).length > 0;
+    const scoreThreshold = hasPartyHints ? 10 : (hasDocIntentHints ? 18 : 22);
+    
+    return bestScore >= scoreThreshold ? best : null;
   },
   rerankArchivedCandidatesByContent: async function (contractList, queryText, caseContext = {}) {
     const list = Array.isArray(contractList) ? contractList : [];
@@ -656,7 +663,8 @@ module.exports = {
       const minAcceptScore = Number(caseContext?.minAcceptScore);
       const hasPartyHints = (querySignals.partyTokens || []).length > 0;
       const hasDocIntentHints = (querySignals.docIntentTokens || []).length > 0;
-      const relaxedThreshold = hasPartyHints || hasDocIntentHints ? 2 : 8;
+      // 提高匹配门槛，避免因为“合同”、“审查”等泛指词导致把毫不相关的案卷拉出来
+      const relaxedThreshold = hasPartyHints ? 10 : (hasDocIntentHints ? 18 : 22);
       const scoreThreshold = Number.isFinite(minAcceptScore) ? minAcceptScore : relaxedThreshold;
       if (bestScore < scoreThreshold) {
         return null;
@@ -673,7 +681,21 @@ module.exports = {
       }
       return best;
     }
-    return primarySorted[0] || null;
+    
+    // 如果没有能提取出详细内容的候选者，对初筛的第一名进行底线分校验
+    const firstCandidate = primarySorted[0];
+    if (firstCandidate) {
+      const minAcceptScore = Number(caseContext?.minAcceptScore);
+      const hasPartyHints = (querySignals.partyTokens || []).length > 0;
+      const hasDocIntentHints = (querySignals.docIntentTokens || []).length > 0;
+      const relaxedThreshold = hasPartyHints ? 10 : (hasDocIntentHints ? 18 : 22);
+      const scoreThreshold = Number.isFinite(minAcceptScore) ? minAcceptScore : relaxedThreshold;
+      const firstScore = this.scoreArchivedCandidate(firstCandidate, query, querySignals);
+      if (firstScore >= scoreThreshold) {
+        return firstCandidate;
+      }
+    }
+    return null;
   },
   shouldLookupArchivedDocument: function (queryText, fileList = []) {
     return this.buildArchiveRetrievalIntent(queryText, fileList).shouldLookup;
@@ -682,11 +704,15 @@ module.exports = {
     const query = String(value || "");
     return /对应的卷宗|这个文件|该文件|这份文件|那份文件|该卷宗|这个卷宗|这份卷宗|那份卷宗|上述卷宗|前述卷宗|这个案卷|这份案卷|上述案卷|前述案卷|上述文件|前述文件|该材料|这份材料|上述材料|前述材料/.test(query);
   },
+  hasExplicitDraftFileReference: function (value) {
+    return false; // 彻底关闭起草功能时的自动匹配
+  },
   buildArchiveRetrievalIntent: function (queryText, fileList = []) {
     const query = String(queryText || "").trim();
     const featureKey = this.data.activeFeatureKey || this.data.modelConfig?.currentFeatureKey || "consult";
     const hasAttachments = Array.isArray(fileList) && fileList.length > 0;
     const hasDirectFileReference = this.isDirectArchiveReference(query);
+    const hasExplicitDraftReference = this.hasExplicitDraftFileReference(query);
     const hasCaseId = /(?:案号|案件编号|卷宗号|项目编号)\s*[:：]?/.test(query);
     const caseContext = this.resolveCaseContext(query);
     const hasCaseContext = !!(caseContext.caseKey || caseContext.caseTitle);
@@ -702,7 +728,12 @@ module.exports = {
     const docIntentTokens = this.extractArchiveDocIntentTokens(query);
     const hasAction = /(写|生成|起草|撰写|草拟|出具|整理|总结|归纳|分析|审查|审阅|阅卷|读取|引用|依据|根据|基于|结合|参照|定位|匹配|检索|查找|调用|使用|对照|识别|提取|解析)/.test(query);
     const featureSuggestsLookup = ["draft", "review", "evidence", "document", "analysis"].includes(featureKey);
-    const shouldLookup =
+    const shouldLookupInDraft =
+      !!query &&
+      !hasAttachments &&
+      !(this.isLikelyContractBody(query) && query.length > 200) &&
+      (hasDirectFileReference || hasExplicitDraftReference);
+    const shouldLookupInOtherFeature =
       !!query &&
       !hasAttachments &&
       !(this.isLikelyContractBody(query) && query.length > 200) &&
@@ -714,11 +745,13 @@ module.exports = {
         (featureSuggestsLookup && (hasAction || hasCaseContext)) ||
         (genericTokens.length >= 3 && (hasAction || hasCaseContext || referenceTokens.length > 0))
       );
+    const shouldLookup = featureKey === "draft" ? shouldLookupInDraft : shouldLookupInOtherFeature;
     return {
       query,
       featureKey,
       hasAttachments,
       hasDirectFileReference,
+      hasExplicitDraftReference,
       hasCaseId,
       hasCaseContext,
       caseContext,
@@ -791,20 +824,17 @@ module.exports = {
     }
     if (debugInfo.matched) {
       return {
-        status: "已命中归档",
-        title: debugInfo.matchedTitle || "未命名文件",
+        status: i18n.t("archive.statusInProgress"),
+        title: debugInfo.matchedTitle || i18n.t("archive.untitled"),
         detail: [
           debugInfo.matchedCaseTitle,
           debugInfo.matchedDocType || debugInfo.matchedCategory,
-          debugInfo.usedCaseContext ? "已带入案件上下文" : "",
+          debugInfo.usedCaseContext ? i18n.t("archive.contextLoaded") : "",
         ].filter(Boolean).join(" · "),
       };
     }
-    return {
-      status: "未命中归档",
-      title: debugInfo.caseTitle || "未定位到归档文件",
-      detail: debugInfo.usedCaseContext ? "已按当前案件上下文执行检索" : "本次问题未触发有效卷宗召回",
-    };
+    // 隐藏“未命中归档”的干扰性提示卡片，保持界面清爽，让模型自然使用当前对话上下文
+    return null;
   },
   retrieveArchivedDocumentForInput: async function (queryText, fileList = []) {
     const lookupIntent = this.buildArchiveRetrievalIntent(queryText, fileList);
@@ -989,7 +1019,7 @@ module.exports = {
       const previewCandidates = [...contractList]
         .map((item) => ({
           id: item?.id || "",
-          title: item?.title || "未命名文件",
+          title: item?.title || i18n.t("archive.untitled"),
           caseTitle: item?.caseTitle || "",
           score: this.scoreArchivedCandidate(item, retrievalQuery, querySignals),
         }))
@@ -998,7 +1028,7 @@ module.exports = {
       const target = await this.rerankArchivedCandidatesByContent(contractList, retrievalQuery, {
         ...caseContext,
         enforceCaseKey: canUseScopedCaseKey,
-        minAcceptScore: hasDirectFileReference ? 0 : 8,
+        minAcceptScore: hasDirectFileReference ? 0 : undefined,
       });
       let finalTarget = target;
       if (!finalTarget?.id && this.isArchiveRewriteIntent(query) && (querySignals.docIntentTokens || []).length) {
@@ -1068,7 +1098,7 @@ module.exports = {
       }
       const matchedDoc = {
         id: detail.id || finalTarget.id,
-        title: detail.title || finalTarget.title || "归档文件",
+        title: detail.title || finalTarget.title || i18n.t("archive.untitled"),
         content: finalContent,
         docType: detail.docType || finalTarget.docType || "",
         category: detail.category || finalTarget.category || "",

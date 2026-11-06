@@ -4,7 +4,8 @@
 .wd-markdown {
   word-wrap: break-word;
   word-break: normal;
-  text-align: justify;
+  /* 两端对齐会把英文短行/换行标题拉开字间距，统一使用左对齐 */
+  text-align: left;
 }
 .wd-markdown ._p {
   margin-bottom: 10rpx;

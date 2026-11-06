@@ -1,3 +1,4 @@
+const i18n = require("../../../utils/i18n");
 const md5 = require("../md5.js");
 const { getCloudInstance, commonRequest } = require("../tools");
 
@@ -102,8 +103,8 @@ module.exports = {
   handleChangeInputType(e) {
     if (!this.data.bot.voiceSettings?.enable) {
       wx.showModal({
-        title: "提示",
-        content: "请前往腾讯云开发平台启用语音输入输出能力",
+        title: i18n.t("common.notice"),
+        content: i18n.t("agent.voiceUnsupported"),
       });
       return;
     }
@@ -117,7 +118,7 @@ module.exports = {
       data: content,
       success: () => {
         wx.showToast({
-          title: "复制成功",
+          title: i18n.t("common.copySuccess"),
           icon: "success",
         });
         this.hideMenu();
@@ -158,14 +159,14 @@ module.exports = {
           : content
         : JSON.stringify({ err: content, reqid });
     wx.showModal({
-      title: "错误原因",
+      title: i18n.t("agent.errorReason"),
       content: transformContent,
       success() {
         wx.setClipboardData({
           data: transformContent,
           success: function () {
             wx.showToast({
-              title: "复制错误完成",
+              title: i18n.t("agent.copyErrorDone"),
               icon: "success",
             });
           },

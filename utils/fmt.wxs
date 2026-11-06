@@ -1,0 +1,29 @@
+// WXML 插值辅助：format("已匹配 {n} 张", count)
+var format = function (template, value) {
+  if (template === null || template === undefined) {
+    return "";
+  }
+  if (value === null || value === undefined) {
+    return template;
+  }
+  return template.replace("{n}", value + "");
+};
+
+var format2 = function (template, first, second) {
+  if (template === null || template === undefined) {
+    return "";
+  }
+  var out = template;
+  if (first !== null && first !== undefined) {
+    out = out.replace("{n}", first + "");
+  }
+  if (second !== null && second !== undefined) {
+    out = out.replace("{name}", second + "");
+  }
+  return out;
+};
+
+module.exports = {
+  format: format,
+  format2: format2,
+};

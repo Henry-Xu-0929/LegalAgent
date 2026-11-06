@@ -1,6 +1,9 @@
 // components/agent-ui-new/chatFIle/chatFile.js
-import { getCloudInstance, compareVersions, commonRequest } from "../tools";
+const { getCloudInstance, compareVersions, commonRequest } = require("../tools");
+const i18n = require("../../../utils/i18n");
+const i18nBehavior = require("../../../utils/i18n-behavior");
 Component({
+  behaviors: [i18nBehavior],
   lifetimes: {
     attached: async function () {
       console.log("enableDel", this.data.enableDel);
@@ -108,10 +111,10 @@ Component({
   data: {
     formatSize: "",
     iconPath: "../imgs/file.svg",
-    statusTextMap: {
-      uploading: "上传中",
-      parsing: "解析中",
-      parseFailed: "解析失败",
+    statusKeyMap: {
+      uploading: "agent.fileUploading",
+      parsing: "agent.fileParsing",
+      parseFailed: "agent.fileParseFailed",
     },
     statusTxt: "",
   },
@@ -119,11 +122,17 @@ Component({
    * 组件的方法列表，
    */
   methods: {
+    onLanguageChanged: function () {
+      this.setData({
+        statusTxt: this.getFormatStatusText(this.data.fileData.status),
+      });
+    },
     getFormatStatusText: function (status) {
       if (status === "parsed") {
         return this.transformSize(this.data.fileData.fileSize);
       }
-      return this.data.statusTextMap[status] || "";
+      const key = this.data.statusKeyMap[status];
+      return key ? i18n.t(key) : "";
     },
     generateCosUploadPath: function (botId, fileName) {
       return `agent_file/${botId}/${fileName}`;
@@ -179,9 +188,9 @@ Component({
         });
       } else {
         wx.showModal({
-          content: "当前支持预览文件类型为 pdf、doc、docx、ppt、pptx、xls、xlsx",
+          content: i18n.t("agent.previewUnsupported"),
           showCancel: false,
-          confirmText: "确定",
+          confirmText: i18n.t("common.ok"),
         });
       }
     },

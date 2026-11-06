@@ -1,17 +1,32 @@
+const i18n = require("../../utils/i18n");
+const { attachPageLanguage } = require("../../utils/i18n-page");
+
+const CATEGORY_DEFS = [
+  { value: "all", key: "archive.catAll" },
+  { value: "合同起草", key: "archive.catDraft" },
+  { value: "合同审查", key: "archive.catReview" },
+  { value: "案件卷宗", key: "archive.catCase" },
+  { value: "证据材料", key: "archive.catEvidence" },
+  { value: "法律文书", key: "archive.catDocument" },
+  { value: "对话分析", key: "archive.catAnalysis" },
+];
+
+const STATUS_KEY_BY_CODE = {
+  final: "archive.statusFinal",
+  uploaded: "archive.statusUploaded",
+  generating: "archive.statusGenerating",
+  generated: "archive.statusGenerated",
+};
+
+const buildCategories = () =>
+  CATEGORY_DEFS.map((item) => ({ value: item.value, label: i18n.t(item.key) }));
+
 Page({
   data: {
     searchInput: "",
     searchQuery: "",
     activeCategory: "all",
-    categories: [
-      { value: "all", label: "全部" },
-      { value: "合同起草", label: "合同起草" },
-      { value: "合同审查", label: "合同审查" },
-      { value: "案件卷宗", label: "案件卷宗" },
-      { value: "证据材料", label: "证据材料" },
-      { value: "法律文书", label: "法律文书" },
-      { value: "对话分析", label: "对话分析" },
-    ],
+    categories: [],
     contracts: [],
     filteredContracts: [],
     isEmpty: false,
@@ -24,11 +39,14 @@ Page({
     isEditing: false,
     editContent: "",
     savingEdit: false,
+    t: {},
   },
   async onLoad() {
+    attachPageLanguage(this);
     await this.loadContracts(false, "");
   },
   onShow() {
+    i18n.syncShell();
     const authUser = wx.getStorageSync("authUser");
     if (!authUser) {
       wx.reLaunch({
@@ -46,6 +64,16 @@ Page({
     }
     this.setData({ page: 1 });
     this.loadContracts(false, safeSearchInput);
+  },
+  onLanguageChanged() {
+    this.setData({
+      categories: buildCategories(),
+      contracts: this.data.contracts.map((item) => this.localizeContractDisplay(item)),
+      filteredContracts: this.data.filteredContracts.map((item) => this.localizeContractDisplay(item)),
+      activeContract: this.data.activeContract
+        ? this.localizeContractDisplay(this.data.activeContract)
+        : null,
+    });
   },
   onSearchInput(e) {
     const searchInput = this.normalizeTextValue(e?.detail?.value, "");
@@ -114,7 +142,7 @@ Page({
     });
     const payload = res?.result || {};
     if (!payload.ok) {
-      throw new Error(payload.error || "法律文件数据获取失败");
+      throw new Error(payload.error || i18n.t("archive.fetchFailed"));
     }
     return payload;
   },
@@ -224,22 +252,67 @@ Page({
       .replace(/\s+/g, " ")
       .trim();
     if (finalConfirmed || /(最终|定稿)/.test(base)) {
-      return "定稿版";
+      return "final";
     }
     if (/已上传/.test(base)) {
-      return "已上传";
+      return "uploaded";
     }
     if (/生成中/.test(base)) {
-      return "生成中";
+      return "generating";
     }
     if (/已生成|生成/.test(base)) {
-      return "已生成";
+      return "generated";
     }
-    return base || "未标记";
+    return base;
+  },
+  formatArchiveStatus(code) {
+    if (!code) {
+      return i18n.t("archive.statusUnmarked");
+    }
+    const key = STATUS_KEY_BY_CODE[code];
+    return key ? i18n.t(key) : code;
   },
   buildArchiveVersionLabel(versionNo) {
     const version = Number(versionNo || 1);
-    return `第${Number.isFinite(version) && version > 0 ? version : 1}版`;
+    return i18n.t("archive.versionLabel", {
+      n: Number.isFinite(version) && version > 0 ? version : 1,
+    });
+  },
+  localizeContractDisplay(item = {}) {
+    const rawVersionNo = Number(item.rawVersionNo || item.versionNo || 1);
+    return {
+      ...item,
+      category: this.formatArchiveCategory(item.rawCategory != null ? item.rawCategory : item.category),
+      sourceType: this.formatArchiveSource(item.rawSourceType != null ? item.rawSourceType : item.sourceType),
+      title: this.formatArchiveTitle(item.rawTitle != null ? item.rawTitle : item.title),
+      summary: this.formatArchiveSummary(item.rawSummary != null ? item.rawSummary : item.summary),
+      status: item.statusCode,
+      displayStatus: this.formatArchiveStatus(item.statusCode),
+      displayVersionLabel: this.buildArchiveVersionLabel(rawVersionNo),
+      manualEditCountLabel: i18n.t("archive.manualEditCount", {
+        n: Number(item.manualEditCount || 1),
+      }),
+    };
+  },
+  formatArchiveCategory(value) {
+    const text = this.normalizeTextValue(value, "");
+    if (!text) {
+      return i18n.t("archive.uncategorized");
+    }
+    const match = CATEGORY_DEFS.find((item) => item.value === text && item.value !== "all");
+    return match ? i18n.t(match.key) : text;
+  },
+  formatArchiveSource(value) {
+    const text = this.normalizeTextValue(value, "");
+    return text || i18n.t("archive.unknown");
+  },
+  formatArchiveTitle(value) {
+    const text = this.normalizeTextValue(value, "");
+    return text || i18n.t("archive.untitled");
+  },
+  formatArchiveSummary(value) {
+    const text = this.normalizeTextValue(value, "");
+    return text || i18n.t("archive.noSummary");
   },
   normalizeContractDisplay(item = {}) {
     const cleanSummary = this.sanitizeContractContent(this.normalizeTextValue(item.summary));
@@ -250,21 +323,21 @@ Page({
       .filter(Boolean);
     const versionNo = Number(item.versionNo || 1);
     const finalConfirmed = !!item.finalConfirmed;
-    const displayStatus = this.normalizeArchiveStatus(item.status, finalConfirmed);
-    return {
+    const statusCode = this.normalizeArchiveStatus(item.status, finalConfirmed);
+    const rawTitle = this.normalizeTextValue(item.title, "");
+    const rawCategory = this.normalizeTextValue(item.category, "");
+    const rawSourceType = this.normalizeTextValue(item.sourceType, "");
+    const rawSummary = cleanSummary || this.normalizeTextValue(item.summary, "");
+    const display = {
       ...item,
       id: this.normalizeTextValue(item.id),
-      title: this.normalizeTextValue(item.title, "未命名文件"),
-      category: this.normalizeTextValue(item.category, "未分类"),
-      docType: this.normalizeTextValue(item.docType),
-      caseKey: this.normalizeTextValue(item.caseKey),
-      caseTitle: this.normalizeTextValue(item.caseTitle),
-      sourceType: this.normalizeTextValue(item.sourceType, "未知"),
-      status: displayStatus,
+      rawTitle,
+      rawCategory,
+      rawSourceType,
+      rawSummary,
+      statusCode,
       versionNo,
       finalConfirmed,
-      displayStatus,
-      displayVersionLabel: this.buildArchiveVersionLabel(versionNo),
       contractGroupKey: this.normalizeTextValue(item.contractGroupKey),
       fileId: this.normalizeTextValue(item.fileId),
       fileName: this.normalizeTextValue(item.fileName),
@@ -276,9 +349,9 @@ Page({
       manualEditUpdatedAt: this.normalizeTextValue(item.manualEditUpdatedAt),
       manualEditHistory: Array.isArray(item.manualEditHistory) ? item.manualEditHistory : [],
       keywords,
-      summary: cleanSummary || this.normalizeTextValue(item.summary, "暂无归纳内容"),
       content: cleanContent || this.normalizeTextValue(item.content),
     };
+    return this.localizeContractDisplay(display);
   },
   syncUpdatedContractToList(updatedContract = {}) {
     const targetId = this.normalizeTextValue(updatedContract.id);
@@ -314,7 +387,7 @@ Page({
       });
     } catch (error) {
       wx.showToast({
-        title: "搜索失败，请稍后再试",
+        title: i18n.t("archive.searchFailed"),
         icon: "none",
       });
     } finally {
@@ -344,7 +417,7 @@ Page({
       });
       const payload = res?.result || {};
       if (!payload.ok) {
-        throw new Error(payload.error || "合同详情获取失败");
+        throw new Error(payload.error || i18n.t("archive.detailFailed"));
       }
       this.setData({
         showDetail: true,
@@ -355,7 +428,7 @@ Page({
       });
     } catch (error) {
       wx.showToast({
-        title: "合同详情获取失败",
+        title: i18n.t("archive.detailFailed"),
         icon: "none",
       });
     }
@@ -366,8 +439,8 @@ Page({
       const editContent = this.normalizeTextValue(this.data.editContent, "");
       if (activeContent !== editContent) {
         const res = await wx.showModal({
-          title: "放弃编辑",
-          content: "当前编辑尚未保存，确定要关闭吗？",
+          title: i18n.t("archive.abandonTitle"),
+          content: i18n.t("archive.abandonContent"),
           confirmColor: "#ef4444",
         });
         if (!res.confirm) {
@@ -406,7 +479,7 @@ Page({
     const id = this.normalizeTextValue(current.id, "");
     if (!id) {
       wx.showToast({
-        title: "缺少文件ID",
+        title: i18n.t("archive.missingFileId"),
         icon: "none",
       });
       return;
@@ -414,7 +487,7 @@ Page({
     const nextContent = String(this.data.editContent || "");
     if (!nextContent.trim()) {
       wx.showToast({
-        title: "内容不能为空",
+        title: i18n.t("archive.emptyContent"),
         icon: "none",
       });
       return;
@@ -440,7 +513,7 @@ Page({
       });
       const payload = res?.result || {};
       if (!payload.ok) {
-        throw new Error(payload.error || "保存失败");
+        throw new Error(payload.error || i18n.t("archive.saveFailed"));
       }
       const updated = this.normalizeContractDisplay(payload.data || {});
       this.setData({
@@ -450,11 +523,11 @@ Page({
       });
       this.syncUpdatedContractToList(updated);
       wx.showToast({
-        title: "已保存编辑",
+        title: i18n.t("archive.saved"),
         icon: "success",
       });
     } catch (error) {
-      const errorMessage = this.normalizeTextValue(error?.message || error?.errMsg, "保存失败");
+      const errorMessage = this.normalizeTextValue(error?.message || error?.errMsg, i18n.t("archive.saveFailed"));
       wx.showToast({
         title: errorMessage.slice(0, 20),
         icon: "none",
@@ -575,10 +648,10 @@ Page({
     return `<p class="body">${safe}</p>`;
   },
   buildContractWordHtml(contract = {}) {
-    const title = this.normalizeTextValue(contract.title, "合同文档");
+    const title = this.normalizeTextValue(contract.title, i18n.t("archive.docTitle"));
     const content = this.normalizeWordExportContent(contract.content || contract.summary || "", title);
     const lines = content ? content.split("\n") : [];
-    const bodyHtml = (lines.length ? lines : ["暂无内容"])
+    const bodyHtml = (lines.length ? lines : [i18n.t("archive.noContent")])
       .map((line) => this.buildWordLineHtml(line, title))
       .filter(Boolean)
       .join("");
@@ -614,17 +687,17 @@ Page({
   },
   async exportContractWord() {
     const contract = this.data.activeContract || {};
-    const title = this.normalizeTextValue(contract.title, "合同文档");
+    const title = this.normalizeTextValue(contract.title, i18n.t("archive.docTitle"));
     const content = this.normalizeWordExportContent(contract.content || contract.summary || "", title);
     if (!content) {
       wx.showToast({
-        title: "暂无可导出内容",
+        title: i18n.t("archive.noExportContent"),
         icon: "none",
       });
       return;
     }
     try {
-      const safeTitle = title.replace(/[\\/:*?"<>|\r\n]/g, " ").trim().slice(0, 28) || "合同文档";
+      const safeTitle = title.replace(/[\\/:*?"<>|\r\n]/g, " ").trim().slice(0, 28) || i18n.t("archive.docTitle");
       const fileName = `${safeTitle}-${Date.now()}.doc`;
       const localPath = `${wx.env.USER_DATA_PATH}/${fileName}`;
       const fs = wx.getFileSystemManager();
@@ -640,7 +713,7 @@ Page({
       });
     } catch (error) {
       wx.showToast({
-        title: "导出Word失败",
+        title: i18n.t("archive.exportFailed"),
         icon: "none",
       });
     }
@@ -649,7 +722,7 @@ Page({
     const fileId = this.data.activeContract?.fileId;
     if (!fileId) {
       wx.showToast({
-        title: "暂无Word文件",
+        title: i18n.t("archive.noWordFile"),
         icon: "none",
       });
       return;
@@ -660,7 +733,7 @@ Page({
       });
       const filePath = downloadRes?.tempFilePath;
       if (!filePath) {
-        throw new Error("Word下载失败");
+        throw new Error(i18n.t("archive.wordDownloadFailed"));
       }
       await wx.openDocument({
         filePath,
@@ -668,7 +741,7 @@ Page({
       });
     } catch (error) {
       wx.showToast({
-        title: "打开Word失败",
+        title: i18n.t("archive.openWordFailed"),
         icon: "none",
       });
     }
@@ -680,8 +753,8 @@ Page({
     }
     try {
       const confirmRes = await wx.showModal({
-        title: "删除确认",
-        content: "删除后不可恢复，确定删除这份合同吗？",
+        title: i18n.t("archive.deleteTitle"),
+        content: i18n.t("archive.deleteContent"),
         confirmColor: "#ef4444",
       });
       if (!confirmRes.confirm) {
@@ -696,10 +769,10 @@ Page({
       });
       const payload = res?.result || {};
       if (!payload.ok) {
-        throw new Error(payload.error || "删除失败");
+        throw new Error(payload.error || i18n.t("archive.deleteFailed"));
       }
       wx.showToast({
-        title: "已删除",
+        title: i18n.t("archive.deleted"),
         icon: "success",
       });
       this.setData({
@@ -712,7 +785,7 @@ Page({
       });
       await this.loadContracts();
     } catch (error) {
-      const errorMessage = this.normalizeTextValue(error?.message || error?.errMsg, "删除失败");
+      const errorMessage = this.normalizeTextValue(error?.message || error?.errMsg, i18n.t("archive.deleteFailed"));
       wx.showToast({
         title: errorMessage.slice(0, 20),
         icon: "none",

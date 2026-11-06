@@ -1,3 +1,4 @@
+const i18n = require("../../../utils/i18n");
 const { getCloudInstance } = require("../tools");
 const { buildRequestMessages } = require("../model-request-builder");
 
@@ -64,10 +65,13 @@ module.exports = {
     }
     const cleanContent = matchedArchiveDoc.content
       .replace(/【系统隐藏提示.*?】/g, "")
+      // 兼容英文模式历史记录中的隐藏标记
+      .replace(/\[Hidden system note:[\s\S]*?\]/g, "")
       .replace(/系统提示信息/g, "")
       .replace(/要求补充案件关键事实/g, "")
       .replace(/当前模型服务拥堵/g, "")
       .trim();
+    const isEnglish = i18n.getLanguage() === "en";
     const featureKey = this.data.activeFeatureKey || this.data.modelConfig?.currentFeatureKey || "consult";
     const clippedContent = this.clipArchiveContentForModel(cleanContent, { featureKey });
     const manualEditHistory = Array.isArray(matchedArchiveDoc?.manualEditHistory)
@@ -93,10 +97,16 @@ module.exports = {
         .join("；");
     }).filter(Boolean).join("\n");
     const systemInstruction = featureKey === "draft"
-      ? "【系统隐藏提示：以下是你匹配到的归档文件，请在起草时直接引用其中的事实与条款，不要向用户索要已归档文件】"
+      ? (isEnglish
+        ? "【系统隐藏提示：以下是你匹配到的归档文件，请在起草时直接引用其中的事实与条款。注意：在你的回答开头，必须首先明确使用英文说明“Drafted based on the archived document《xxx》”，并简要说明采用了该文件中的哪些核心信息，然后再输出具体的合同/文书内容（正文必须全英文）。不要向用户索要已归档文件】"
+        : "【系统隐藏提示：以下是你匹配到的归档文件，请在起草时直接引用其中的事实与条款。注意：在你的回答开头，必须首先明确说明“已根据归档文件《xxx》进行起草”，并简要说明采用了该文件中的哪些核心信息，然后再输出具体的合同/文书内容。不要向用户索要已归档文件】")
       : featureKey === "review"
-      ? "【系统隐藏提示：以下是你匹配到的归档文件，请基于文件原文给出审查与修改建议，不要向用户索要已归档文件】"
-      : "【系统隐藏提示：以下是你匹配到的归档文件，请优先基于该文件完成用户当前任务，不要向用户索要已归档文件】";
+      ? (isEnglish
+        ? "【系统隐藏提示：以下是你匹配到的归档文件，请基于文件原文给出审查与修改建议。在回答开头请用英文明确提及“Reviewed based on the archived document《xxx》”。回答正文必须全英文。不要向用户索要已归档文件】"
+        : "【系统隐藏提示：以下是你匹配到的归档文件，请基于文件原文给出审查与修改建议。在回答开头请明确提及“已参考归档文件《xxx》进行审查”。不要向用户索要已归档文件】")
+      : (isEnglish
+        ? "【系统隐藏提示：以下是你匹配到的归档文件，请优先基于该文件完成用户当前任务。在回答开头请用英文明确说明你结合了归档文件《xxx》的信息。回答正文必须全英文。不要向用户索要已归档文件】"
+        : "【系统隐藏提示：以下是你匹配到的归档文件，请优先基于该文件完成用户当前任务。在回答开头请明确说明结合了归档文件《xxx》的信息。不要向用户索要已归档文件】");
 
     return [
       String(userInput || ""),
@@ -131,19 +141,49 @@ module.exports = {
       inputValue = message;
     }
     const chatMode = this.data.chatMode;
-    const quickResponseModel = modelConfig?.quickResponseModel || "default-chat-model";
+    const quickResponseModel = modelConfig?.quickResponseModel || "deepseek-flash";
     const hasAttachmentInput = chatMode === "model" && this.data.sendFileList.length > 0;
     const hasImageInput = chatMode === "model" && this.data.sendFileList.some((item) => item.rawType === "image");
     if (!inputValue && !hasAttachmentInput) {
       return;
     }
     if (!inputValue && hasImageInput) {
-      const hasOcrText = this.data.sendFileList.some((item) => item.rawType === "image" && !!item.ocrText);
+      // Retry OCR once on send to avoid false negatives from transient OCR failures.
+      const refreshedList = await Promise.all(this.data.sendFileList.map(async (item) => {
+        if (item.rawType !== "image" || item.ocrText) {
+          return item;
+        }
+        try {
+          const ocrResult = await this.extractImageTextWithTrace(item.tempPath);
+          const text = String(ocrResult?.text || "").trim();
+          return {
+            ...item,
+            ocrText: text,
+            ocrDebug: Array.isArray(ocrResult?.trace)
+              ? ocrResult.trace.map((step) => `${step.step}:${step.ok ? "ok" : "fail"}${step.detail ? `(${step.detail})` : ""}`).join(" | ")
+              : "",
+          };
+        } catch (e) {
+          return {
+            ...item,
+            ocrDebug: String(e?.message || ""),
+          };
+        }
+      }));
+      this.setData({
+        sendFileList: refreshedList,
+      });
+      const hasOcrText = refreshedList.some((item) => item.rawType === "image" && !!String(item.ocrText || "").trim());
       if (!hasOcrText) {
-        wx.showToast({
-          title: "图片中未识别到文字",
-          icon: "none",
+        const firstDebug = refreshedList.find((item) => item.rawType === "image" && item.ocrDebug)?.ocrDebug || "";
+        const detail = firstDebug || i18n.t("agent.ocrUnavailable");
+        wx.showModal({
+          title: i18n.t("agent.ocrTitle"),
+          content: `${i18n.t("agent.ocrDetailPrefix")}${detail.slice(0, 600)}`,
+          showCancel: false,
+          confirmText: i18n.t("agent.gotIt"),
         });
+        console.warn("OCR_SEND_FAIL_TRACE:", detail);
         return;
       }
     }
@@ -156,10 +196,10 @@ module.exports = {
       record_id: "record_id" + String(+new Date() - 10),
       role: "user",
       fileList: pendingFileList,
-      archiveLookup: chatMode === "model" ? {
-        status: "检索归档中",
-        title: "正在匹配历史材料",
-        detail: "已发送请求，正在补充关联卷宗",
+      archiveLookup: chatMode === "model" && this.shouldLookupArchivedDocument(inputValue, pendingFileList) ? {
+        status: i18n.t("agent.archiveSearching"),
+        title: i18n.t("agent.archiveMatching"),
+        detail: i18n.t("agent.archiveSending"),
       } : null,
     };
     const record = {
@@ -208,7 +248,7 @@ module.exports = {
       });
       if (matchedReviewContract?.id) {
         wx.showToast({
-          title: `已匹配：${matchedReviewContract.title || "归档文件"}`,
+          title: i18n.t("agent.matched", { name: matchedReviewContract.title || i18n.t("archive.untitled") }),
           icon: "none",
         });
       }
@@ -306,7 +346,7 @@ module.exports = {
               lastValue.content = this.data.defaultErrorMsg;
               if (error && error.message) {
                 if (error.code === "EXCEED_TOKEN_QUOTA_LIMIT") {
-                  lastValue.content = "大模型 Token 已耗尽，请通知开发者前往云开发平台进行处理";
+                  lastValue.content = i18n.t("agent.tokenExhausted");
                   lastValue.error = lastValue.content;
                 } else {
                   lastValue.content = error.message;
@@ -444,8 +484,8 @@ module.exports = {
             if (type === "finish" && finish_reason === "length") {
               const completionTokens = usage?.completionTokens || 0;
               lastValue.error = completionTokens
-                ? `当前输出token长度为 ${completionTokens}，已超过最大限制，请重新提问`
-                : "已超过最大限制，请重新提问";
+                ? i18n.t("agent.tokenLimit", { n: completionTokens })
+                : i18n.t("agent.tokenLimitShort");
               this.setData({
                 [`chatRecords[${lastValueIndex}].error`]: lastValue.error,
               });
@@ -535,22 +575,22 @@ module.exports = {
             });
             if (unsupportedFile) {
               wx.showToast({
-                title: "部分附件未提取正文，已按文件信息继续",
+                title: i18n.t("agent.attachmentsPartial"),
                 icon: "none",
               });
             }
           } catch (e) {
             const newValue = [...this.data.chatRecords];
             const lastValue = newValue[newValue.length - 1];
-            const errMsg = e && e.message ? String(e.message) : "附件解析失败";
-            lastValue.content = `附件解析失败：${errMsg}`;
+            const errMsg = e && e.message ? String(e.message) : i18n.t("agent.attachmentFailed");
+            lastValue.content = i18n.t("agent.attachmentFailedDetail", { message: errMsg });
             lastValue.hiddenBtnGround = true;
             this.setData({
               chatRecords: newValue,
               chatStatus: 0,
             });
             wx.showToast({
-              title: "附件解析失败",
+              title: i18n.t("agent.attachmentFailed"),
               icon: "none",
             });
             return;
@@ -664,7 +704,7 @@ module.exports = {
                 });
                 if (!archiveRes?.ok && !/^skip:/.test(String(archiveRes?.error || ""))) {
                   wx.showToast({
-                    title: archiveRes?.error || "合同归档失败",
+                    title: archiveRes?.error || i18n.t("agent.archiveFailed"),
                     icon: "none",
                   });
                 }
@@ -680,21 +720,23 @@ module.exports = {
             const errorRecord = errorValue[errorValue.length - 1];
             const detail = err?.errMsg || err?.message || "";
             if (detail.includes("url not in domain list")) {
-              errorRecord.content = "请求失败：请在小程序后台配置 request 合法域名 https://api.deepseek.com";
+              errorRecord.content = i18n.t("agent.requestDomain");
             } else if (
               err?.errCode === -504003 ||
               detail.includes("FUNCTIONS_TIME_LIMIT_EXCEEDED") ||
               detail.includes("timed out after")
             ) {
-              errorRecord.content = "请求失败：云函数超时，请在 aiChat 的版本与配置中把超时时间调大（建议 20-60 秒）";
+              errorRecord.content = i18n.t("agent.requestTimeoutCloud");
             } else if (err?.errCode === "UPSTREAM_TIMEOUT") {
-              errorRecord.content = "请求失败：模型服务响应超时，请重试一次或精简输入内容";
+              errorRecord.content = i18n.t("agent.requestTimeoutModel");
             } else if (err?.statusCode === 401) {
-              errorRecord.content = "请求失败：API Key 无效或已过期";
+              errorRecord.content = i18n.t("agent.requestKeyInvalid");
             } else if (err?.statusCode === 429) {
-              errorRecord.content = "请求失败：请求过于频繁或额度不足";
+              errorRecord.content = i18n.t("agent.requestRateLimit");
             } else {
-              errorRecord.content = detail ? `请求失败：${detail}` : "请求失败，请检查网络或 API Key 设置。";
+              errorRecord.content = detail
+                ? i18n.t("agent.requestFailedDetail", { detail })
+                : i18n.t("agent.requestCheck");
             }
             this.setData({ chatRecords: errorValue, chatStatus: 0 });
             this.resumeChatRecordSync();
@@ -709,19 +751,21 @@ module.exports = {
       const errorRecord = errorValue[errorValue.length - 1];
       if (errorRecord) {
         if (detail.includes("url not in domain list")) {
-          errorRecord.content = "请求失败：请在小程序后台配置 request 合法域名";
+          errorRecord.content = i18n.t("agent.requestDomain");
         } else if (
           err?.errCode === -504003 ||
           detail.includes("FUNCTIONS_TIME_LIMIT_EXCEEDED") ||
           detail.includes("timed out after")
         ) {
-          errorRecord.content = "请求失败：云函数超时，请稍后重试";
+          errorRecord.content = i18n.t("agent.requestTimeoutCloudShort");
         } else if (err?.statusCode === 401) {
-          errorRecord.content = "请求失败：API Key 无效或已过期";
+          errorRecord.content = i18n.t("agent.requestKeyInvalid");
         } else if (err?.statusCode === 429) {
-          errorRecord.content = "请求失败：请求过于频繁或额度不足";
+          errorRecord.content = i18n.t("agent.requestRateLimit");
         } else {
-          errorRecord.content = detail ? `请求失败：${detail}` : this.data.defaultErrorMsg;
+          errorRecord.content = detail
+            ? i18n.t("agent.requestFailedDetail", { detail })
+            : this.data.defaultErrorMsg;
         }
         this.setData({ chatRecords: errorValue, chatStatus: 0 });
       } else {

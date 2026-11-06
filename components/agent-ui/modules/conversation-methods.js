@@ -1,5 +1,7 @@
 const { commonRequest } = require("../tools");
 
+const i18n = require("../../../utils/i18n");
+
 module.exports = {
   transformToolName: function (str) {
     if (str) {
@@ -120,9 +122,9 @@ module.exports = {
     const that = this;
     this.hideActionMenu();
     wx.showModal({
-      title: "提示",
-      content: "确认删除当前会话？",
-      confirmText: "删除",
+      title: i18n.t("common.notice"),
+      content: i18n.t("agent.deleteSessionConfirm"),
+      confirmText: i18n.t("common.delete"),
       confirmColor: "#ff303b",
       success: async function (res) {
         if (res.confirm) {
@@ -153,19 +155,19 @@ module.exports = {
                 }
               }
               wx.showToast({
-                title: "删除成功",
+                title: i18n.t("agent.deleteSuccess"),
                 icon: "success",
               });
             } else {
               wx.showToast({
-                title: "删除失败，请稍后重试",
+                title: i18n.t("agent.deleteFailed"),
                 icon: "error",
               });
             }
           } catch (error) {
             console.error("删除会话失败", error);
             wx.showToast({
-              title: "删除失败，请稍后重试",
+              title: i18n.t("agent.deleteFailed"),
               icon: "error",
             });
           }
@@ -195,14 +197,14 @@ module.exports = {
   createNewConversation: async function () {
     if (!this.data.bot.multiConversationEnable) {
       wx.showModal({
-        title: "提示",
-        content: "请前往腾讯云开发平台启用 Agent 多会话模式",
+        title: i18n.t("common.notice"),
+        content: i18n.t("agent.multiSessionUnsupported"),
       });
       return;
     }
     this.clearChatRecords();
     this.setData({
-      refreshText: "下拉加载历史记录",
+      refreshText: i18n.t("agent.refreshDefault"),
     });
   },
   scrollConToBottom: async function (e) {
@@ -295,8 +297,8 @@ module.exports = {
   openDrawer: async function () {
     if (!this.data.bot.multiConversationEnable) {
       wx.showModal({
-        title: "提示",
-        content: "请前往腾讯云开发平台启用 Agent 多会话模式",
+        title: i18n.t("common.notice"),
+        content: i18n.t("agent.multiSessionUnsupported"),
       });
       return;
     }

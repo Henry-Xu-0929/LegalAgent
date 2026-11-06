@@ -1,3 +1,4 @@
+const i18n = require("../../../utils/i18n");
 const { getCloudInstance } = require("../tools");
 
 module.exports = {
@@ -1114,14 +1115,14 @@ module.exports = {
       });
       if (!result.ok && !options.quiet) {
         wx.showToast({
-          title: result.error || "合同归档失败",
+          title: result.error || i18n.t("agent.archiveFailed"),
           icon: "none",
         });
       }
       return result;
     } catch (error) {
       console.log("archiveGeneratedContract failed", error);
-      return { ok: false, id: "", error: error?.message || error?.errMsg || "合同归档失败" };
+      return { ok: false, id: "", error: error?.message || error?.errMsg || i18n.t("agent.archiveFailed") };
     }
   },
   isFinalContractIntent: function (userInput, generatedContent) {

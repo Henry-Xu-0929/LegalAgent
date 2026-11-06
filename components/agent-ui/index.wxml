@@ -1,4 +1,5 @@
 <!-- agent ui 组件根容器 -->
+<wxs module="fmt" src="../../utils/fmt.wxs" />
 <view class="agent-ui" bind:tap="onTapPage">
   <!-- 左侧抽屉，只在 bot 模式下展示 -->
   <view wx-if="{{chatMode==='bot'&&!isAgent}}" class="drawer-mask {{isDrawerShow ? 'show' : ''}}" bindtap="closeDrawer"></view>
@@ -6,7 +7,7 @@
     <view class="drawer-header">
       <view class="create-new-chat" bind:tap="clickCreateInDrawer">
         <image style="width: 48rpx;height: 48rpx;margin-right: 10rpx" src="./imgs/chat-add.svg" mode="aspectFill" />
-        <text> 开启新对话 </text>
+        <text>{{t.agent.newChat}}</text>
       </view>
       <image class="close-icon" src="./imgs/indent-left.svg" bindtap="closeDrawer" />
     </view>
@@ -15,7 +16,7 @@
         bindscrolltolower="scrollConToBottom">
         <block wx:if="{{ conversations.length > 0 }}">
           <view class="con-block" wx:if="{{transformConversations.todayCon.length}}">
-            <text class="date-title">今天</text>
+            <text class="date-title">{{t.agent.today}}</text>
             <view class="con-container">
               <view class="con-item {{item.conversationId === conversation.conversationId ? 'selected-con' : ''}}"
                 bind:tap="handleClickConversation" bind:longpress="handleLongPressConversation"
@@ -25,7 +26,7 @@
             </view>
           </view>
           <view class="con-block" wx:if="{{transformConversations.curMonthCon.length}}">
-            <text class="date-title">本月</text>
+            <text class="date-title">{{t.agent.thisMonth}}</text>
             <view class="con-container">
               <view class="con-item {{item.conversationId === conversation.conversationId ? 'selected-con' : ''}}"
                 bind:tap="handleClickConversation" bind:longpress="handleLongPressConversation"
@@ -35,7 +36,7 @@
             </view>
           </view>
           <view class="con-block" wx:if="{{transformConversations.earlyCon.length}}">
-            <text class="date-title">更早</text>
+            <text class="date-title">{{t.agent.earlier}}</text>
             <view class="con-container">
               <view class="con-item" bind:tap="handleClickConversation" bind:longpress="handleLongPressConversation"
                 data-conversation="{{item}}" wx:for="{{transformConversations.earlyCon}}" wx:key="index">
@@ -49,7 +50,7 @@
             style="width: 100%;height: 100%;display: flex;flex-direction: column;justify-content: center;align-items: center;">
             <image src="./imgs/chat-bubble-history.svg" mode="aspectFill"
               style="width: 100rpx;height: 100rpx;transform: translateY(-50%);" />
-            <text style="color: rgb(160, 160, 160)">暂无历史记录</text>
+            <text style="color: rgb(160, 160, 160)">{{t.agent.noHistory}}</text>
           </view>
         </block>
       </scroll-view>
@@ -99,21 +100,21 @@
               <!-- 最后一条消息，并且是发送状态显示发送中 -->
               <block wx:if="{{(chatRecords.length-1)===index&&chatStatus===1}}">
                 <view style="display: flex;align-items: center; gap: 4px; font-size: 32rpx;line-height: 1.8;">
-                  <image src="./imgs/loading.svg" mode="aspectFill" style="width: 14px;height: 14px;" /> 请稍等，正在卖力思考中 🤔
+                  <image src="./imgs/loading.svg" mode="aspectFill" style="width: 14px;height: 14px;" /> {{t.agent.thinking}}
                 </view>
               </block>
               <block wx:else>
                 <!-- 数据库检索 -->
                 <view wx:if="{{item.db_len}}"
                   style="border-radius: 8px;margin-bottom: 12px;background-color: #f5f5f5;padding: 18rpx 26rpx;display: inline-block;opacity: 0.7;font-size: 14px;">
-                  已匹配 {{item.db_len}} 张数据表
+                  {{fmt.format(t.agent.dbMatched, item.db_len)}}
                 </view>
                 <!-- 联网搜索 -->
                 <FoldedCard wx:if="{{item.search_info && item.search_info.search_results}}" initStatus="{{false}}"
                   showBgColor="{{true}}">
                   <view slot="title" style="opacity: 0.7;font-size: 14px;display: flex; align-items: center; gap: 8px;">
                     <image src="./imgs/search.svg" mode="aspectFill" style="width: 36rpx;height: 36rpx;" />
-                    <text>已参考 {{item.search_info.search_results.length}} 个网页</text>
+                    <text>{{fmt.format(t.agent.webRefs, item.search_info.search_results.length)}}</text>
                   </view>
                   <view slot="content" class="link-box">
                     <block wx:for="{{item.search_info.search_results}}" wx:key="index">
@@ -127,7 +128,7 @@
                 <!-- 知识库 -->
                 <view wx:if="{{item.knowledge_base&&item.knowledge_base.length}}"
                   style="border-radius: 8px;margin-bottom: 12px;background-color: #f5f5f5;padding: 18rpx 26rpx;display: inline-block;opacity: 0.7;font-size: 14px;">
-                  已参考 {{item.knowledge_base.length}} 处知识库内容
+                  {{fmt.format(t.agent.kbRefs, item.knowledge_base.length)}}
                 </view>
                 <!-- 推理过程 -->
                 <FoldedCard wx:if="{{!!item.reasoning_content}}" initStatus="{{true}}" showBgColor="{{false}}">
@@ -135,10 +136,10 @@
                     style="opacity: 0.7;font-size: 14px; display: flex; align-items: center; gap: 8px;">
                     <image src="./imgs/system-sum.svg" mode="aspectFill" style="width: 36rpx;height: 36rpx;" />
                     <block wx:if="{{item.pauseThinking}}">
-                      已停止思考
+                      {{t.agent.thinkingStopped}}
                     </block>
                     <block wx:else>
-                      <text>{{item.reasoning_content&&!item.content?"思考中...":"已深度思考（用时"+item.thinkingTime+"秒）"}}</text>
+                      <text>{{item.reasoning_content&&!item.content?t.agent.thinkingInProgress:fmt.format(t.agent.deepThought, item.thinkingTime)}}</text>
                     </block>
                   </view>
                   <view style="padding-left: 25rpx;margin-top: 28rpx; border-left: rgba(0,0,0,0.14) solid 2px ;"
@@ -157,7 +158,7 @@
                       <view slot="title"
                         style="opacity: 0.7;font-size: 14px; display: flex; align-items: center; gap: 8px;">
                         <block>
-                          调用工具 {{subItem.name}}
+                          {{t.agent.toolCallPrefix}}{{subItem.name}}
                           <image wx:if="{{!subItem.callResult && !subItem.error}}" src="./imgs/loading.svg"
                             mode="aspectFill" style="width: 14px;height: 14px;" />
                           <image wx:if="{{subItem.callResult}}" mode="widthFix" src='./imgs/check.svg'
@@ -165,16 +166,13 @@
                           <image wx:if="{{subItem.error}}" mode="widthFix" src='./imgs/close-red.svg'
                             style="width: 36rpx; height: 36rpx;vertical-align: top;" bind:tap="share" />
                         </block>
-                        <!-- <block wx:else>
-                          <text>{{item.reasoning_content&&!item.content?"思考中...":"已深度思考（用时"+item.thinkingTime+"秒）"}}</text>
-                        </block> -->
                       </view>
                       <view wx:if="{{showToolCallDetail}}"
                         style="padding-left: 25rpx;margin-top: 28rpx; border-left: rgb(165, 164, 164) solid 2px; opacity: 0.7;"
                         slot="content">
-                        <view>参数：</view>
+                        <view>{{t.agent.toolParams}}</view>
                         <markdownPreview markdown="{{subItem.callParams||''}}" fontSize="{{28}}"></markdownPreview>
-                        <view>结果：</view>
+                        <view>{{t.agent.toolResult}}</view>
                         <markdownPreview markdown="{{subItem.callResult||''}}" fontSize="{{28}}"></markdownPreview>
                       </view>
                     </FoldedCard>
@@ -250,11 +248,11 @@
                 <view class="operation-menu" wx:if="{{showMenu && tapMenuRecordId === item.record_id}}">
                   <view class="menu-item" bind:tap="handleCopyAll" data-content="{{item.content}}">
                     <image src="./imgs/copy.svg" class="menu-icon" />
-                    <text>复制全文</text>
+                    <text>{{t.agent.copyAll}}</text>
                   </view>
                   <view class="menu-item" bind:tap="handleEdit" data-content="{{item.content}}">
                     <image src="./imgs/edit.svg" class="menu-icon" />
-                    <text>修改</text>
+                    <text>{{t.agent.edit}}</text>
                   </view>
                 </view>
               </view>
@@ -329,7 +327,7 @@
       <view bind:tap="handleClickWebSearch" class="{{'webSearchSwitch ' + (useWebSearch ? 'feature_enable' : '')}}">
         <image src="{{ useWebSearch ? './imgs/internetUse.svg' : './imgs/internet.svg'}}" mode=""
           style="width: 40rpx;height:30px;margin-right: 10rpx;" />
-        <text style="color: {{useWebSearch ? 'rgb(77, 107, 254)' : 'rgb(95, 114, 146)'}}">联网搜索</text>
+        <text style="color: {{useWebSearch ? 'rgb(77, 107, 254)' : 'rgb(95, 114, 146)'}}">{{t.agent.webSearch}}</text>
       </view>
     </view>
     <view class="file_list" wx:if="{{showFileList}}">
@@ -345,19 +343,19 @@
         </view>
         <view hidden="{{useVoice}}" class="input_inner_box">
           <textarea class="input" value="{{inputValue}}" maxlength="1024" bindfocus="bindInputFocus"
-            bindinput="bindKeyInput" placeholder="说点什么吧" bindconfirm="handleSendMessage" confirm-type="send"
+            bindinput="bindKeyInput" placeholder="{{t.agent.placeholder}}" bindconfirm="handleSendMessage" confirm-type="send"
             adjust-position cursor-spacing="40" auto-height="{{true}}" show-confirm-bar="{{false}}"
             bindlinechange="handleLineChange" />
         </view>
         <text
-          style="position: absolute;top: -50%;left: 50%;transform: translateX(-50%);font-size: 12px;color: {{sendStatus === 2 ? '#e84f50;' : ''}}">{{sendStatus === 1 ? "松开发送，上滑取消" : (sendStatus === 2 ? "松开取消" : "")}}</text>
+          style="position: absolute;top: -50%;left: 50%;transform: translateX(-50%);font-size: 12px;color: {{sendStatus === 2 ? '#e84f50;' : ''}}">{{sendStatus === 1 ? t.agent.releaseToSend : (sendStatus === 2 ? t.agent.releaseToCancel : "")}}</text>
         <view hidden="{{!useVoice}}" bindtouchstart="handleTouchStart" bindtouchmove="handleTouchMove"
           bindtouchend="handleTouchEnd" class="input_inner_box"
           style="position: absolute;width: calc(100% - 136rpx);left: 50%;transform: translateX(-50%);opacity: 0;">
         </view>
         <view hidden="{{!useVoice}}" class="input_inner_box say_box"
           style="background-color: {{sendStatus === 1 ? '#e9f6ef' : (sendStatus === 2 ? '#f8ecea' : '')}};"><text
-            wx:if="{{!longPressTriggered}}">{{voiceRecognizing ? '识别中' : '按住 说话'}}</text>
+            wx:if="{{!longPressTriggered}}">{{voiceRecognizing ? t.agent.recognizing : t.agent.holdToTalk}}</text>
           <image wx:else
             src="{{ sendStatus === 1 ? './imgs/sendSaying.svg' : (sendStatus === 2 ? './imgs/cancelSaying.svg' : '')}}"
             class="set" mode="widthFix" />
@@ -380,19 +378,19 @@
     <view class="tool_box" wx:if="{{showTools}}">
       <view class="function" bind:tap="handleTapClear">
         <image src="./imgs/clear.svg" alt="widthFix" class="icon" />
-        <text class="text_desc">清除</text>
+        <text class="text_desc">{{t.agent.clear}}</text>
       </view>
       <view wx:if="{{showUploadFile && (chatMode === 'bot' || chatMode === 'model')}}" class="function" bind:tap="handleUploadMessageFile">
         <image src="./imgs/file.svg" alt="widthFix" class="icon" />
-        <text class="text_desc">文件</text>
+        <text class="text_desc">{{t.agent.file}}</text>
       </view>
       <view wx:if="{{showUploadImg && (chatMode === 'bot' || chatMode === 'model')}}" class="function" bind:tap="handleAlbum">
         <image src="./imgs/uploadImg.svg" alt="widthFix" class="icon" />
-        <text class="text_desc">图片</text>
+        <text class="text_desc">{{t.agent.image}}</text>
       </view>
       <view wx:if="{{showUploadImg && (chatMode === 'bot' || chatMode === 'model')}}" class="function" bind:tap="handleCamera">
         <image src="./imgs/camera.svg" alt="widthFix" class="icon" />
-        <text class="text_desc">相机</text>
+        <text class="text_desc">{{t.agent.camera}}</text>
       </view>
     </view>
   </view>
@@ -402,10 +400,10 @@
   <view class="action-menu-modal" wx:if="{{showActionMenu}}" bind:tap="hideActionMenu">
     <view class="action-menu" catchtap="">
       <view class="action-item" bind:tap="handleDeleteConversation" data-conversation="{{selectedConversation}}">
-        删除
+        {{t.agent.delete}}
       </view>
       <view class="action-item cancel-item" bind:tap="hideActionMenu">
-        取消
+        {{t.agent.cancel}}
       </view>
     </view>
   </view>

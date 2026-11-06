@@ -1,4 +1,23 @@
+const i18n = require("../../../utils/i18n");
+const i18nBehavior = require("../../../utils/i18n-behavior");
+
+// 中文天气 -> 英文显示（仅显示层，图标映射仍用 transformWeather）
+const WEATHER_LABEL_KEY = {
+  晴: "weatherSunny",
+  多云: "weatherCloudy",
+  阴: "weatherOvercast",
+  雨: "weatherRainy",
+  雪: "weatherSnowy",
+  雷阵雨: "weatherThunderstorm",
+  阵雨: "weatherShower",
+  大雨: "weatherHeavyRain",
+  中雨: "weatherModerateRain",
+  小雨: "weatherLightRain",
+  晴间多云: "weatherPartlyCloudy",
+};
+
 Component({
+  behaviors: [i18nBehavior],
   properties: {
     // 组件的属性列表
     name: {
@@ -45,32 +64,10 @@ Component({
             const todayForecast = forecast[0];
             const { city, district, infos } = todayForecast;
             const todayInfo = infos[0];
-            this.setData({
-              isDay,
-              city,
-              forecasts: infos.map((item) => {
-                const { date, week, day, night } = item;
-                const dateInfo = date.split("-");
-                return {
-                  // ...item,
-                  dayweather: day.weather,
-                  nightweather: night.weather,
-                  daytemp: day.temperature,
-                  nighttemp: night.temperature,
-                  date: `${dateInfo[1]}/${dateInfo[2]}`,
-                  dayweatherIcon: this.transformWeather(day.weather),
-                  nightweatherIcon: this.transformWeather(night.weather),
-                };
-              }),
-              today: {
-                daytemp: todayInfo.day.temperature,
-                nighttemp: todayInfo.night.temperature,
-                dayweather: todayInfo.day.weather,
-                nightweather: todayInfo.night.weather,
-                dayweatherIcon: this.transformWeather(todayInfo.day.weather),
-                nightweatherIcon: this.transformWeather(todayInfo.night.weather),
-              },
-            });
+            this._rawForecasts = infos;
+            this._rawToday = todayInfo;
+            this._rawCity = city;
+            this.setData(this.buildDisplayData(infos, todayInfo));
           }
           // this.setData({
           //   isDay,
@@ -101,6 +98,42 @@ Component({
     },
   },
   methods: {
+    formatWeatherLabel(weather) {
+      const key = WEATHER_LABEL_KEY[weather];
+      return key ? i18n.t(`toolCard.${key}`) : weather;
+    },
+    buildDisplayData(infos, todayInfo) {
+      return {
+        isDay: this.data.isDay,
+        city: this._rawCity || this.data.city,
+        forecasts: (infos || []).map((item) => {
+          const { date, day, night } = item;
+          const dateInfo = date.split("-");
+          return {
+            dayweather: this.formatWeatherLabel(day.weather),
+            nightweather: this.formatWeatherLabel(night.weather),
+            daytemp: day.temperature,
+            nighttemp: night.temperature,
+            date: `${dateInfo[1]}/${dateInfo[2]}`,
+            dayweatherIcon: this.transformWeather(day.weather),
+            nightweatherIcon: this.transformWeather(night.weather),
+          };
+        }),
+        today: {
+          daytemp: todayInfo.day.temperature,
+          nighttemp: todayInfo.night.temperature,
+          dayweather: this.formatWeatherLabel(todayInfo.day.weather),
+          nightweather: this.formatWeatherLabel(todayInfo.night.weather),
+          dayweatherIcon: this.transformWeather(todayInfo.day.weather),
+          nightweatherIcon: this.transformWeather(todayInfo.night.weather),
+        },
+      };
+    },
+    onLanguageChanged() {
+      if (this._rawForecasts && this._rawToday) {
+        this.setData(this.buildDisplayData(this._rawForecasts, this._rawToday));
+      }
+    },
     checkIsDay() {
       const currentHour = new Date().getHours();
       this.setData({
