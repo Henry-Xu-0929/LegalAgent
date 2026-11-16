@@ -7,6 +7,7 @@ module.exports = {
     delete: "删除",
     notice: "提示",
     loading: "加载中...",
+    retry: "重试",
     copySuccess: "复制成功",
     copyFailed: "复制失败",
     unknown: "未知",
@@ -323,6 +324,8 @@ module.exports = {
     suggestions: "智能法务建议",
     aiGenerating: "AI 正在分析报表数据…",
     aiFallbackNote: "AI 建议暂不可用，已展示本地建议。",
+    generateAISuggestions: "生成 AI 建议",
+    aiRequestFailed: "AI 建议生成失败，已展示本地建议。",
     timesSuffix: "次",
     casesSuffix: "例",
     loadFailed: "报表数据获取失败",
@@ -344,6 +347,7 @@ module.exports = {
     },
     fallbackTrends: {
       consultGrowth: "较上月咨询增长",
+      reviewGrowth: "审查合同较上月增长",
       passRate: "合同一次通过率",
     },
     fallbackRisks: {
@@ -351,6 +355,10 @@ module.exports = {
       jurisdiction: "管辖法院不利",
       payment: "付款条款模糊",
       other: "其他风险",
+      highRisk: "高风险",
+      mediumRisk: "中风险",
+      lowRisk: "低风险",
+      unlabeled: "未标注",
     },
     fallbackQuestions: {
       probation: "劳动合同怎么约定试用期？",

@@ -8,6 +8,81 @@ const buildTimeLabels = () => [
   i18n.t("report.timeEvening"),
 ];
 
+// 云端/Database 里的动态字段是中文，渲染前统一映射到 i18n 字典
+const METRIC_LABEL_KEYS = {
+  本月咨询数: "report.fallbackMetrics.consultations",
+  审查合同: "report.fallbackMetrics.reviewedContracts",
+  发现风险: "report.fallbackMetrics.risksFound",
+};
+
+const TREND_LABEL_KEYS = {
+  较上月咨询增长: "report.fallbackTrends.consultGrowth",
+  审查合同较上月增长: "report.fallbackTrends.reviewGrowth",
+  合同一次通过率: "report.fallbackTrends.passRate",
+};
+
+const RISK_LABEL_KEYS = {
+  违约责任缺失: "report.fallbackRisks.missingBreach",
+  管辖法院不利: "report.fallbackRisks.jurisdiction",
+  付款条款模糊: "report.fallbackRisks.payment",
+  其他风险: "report.fallbackRisks.other",
+  高风险: "report.fallbackRisks.highRisk",
+  中风险: "report.fallbackRisks.mediumRisk",
+  低风险: "report.fallbackRisks.lowRisk",
+  未标注: "report.fallbackRisks.unlabeled",
+  breach_of_contract: "report.fallbackRisks.missingBreach",
+  unfavorable_jurisdiction: "report.fallbackRisks.jurisdiction",
+  vague_payment_terms: "report.fallbackRisks.payment",
+  other: "report.fallbackRisks.other",
+};
+
+const WEEKDAY_LABEL_KEYS = {
+  周一: "report.weekdayMon",
+  周二: "report.weekdayTue",
+  周三: "report.weekdayWed",
+  周四: "report.weekdayThu",
+  周五: "report.weekdayFri",
+  周六: "report.weekdaySat",
+  周日: "report.weekdaySun",
+};
+
+const QUESTION_KEYS = {
+  "劳动合同怎么约定试用期？": "report.fallbackQuestions.probation",
+  "房屋租赁合同违约金一般定多少？": "report.fallbackQuestions.penalty",
+  "离职竞业协议是否必须给补偿？": "report.fallbackQuestions.nonCompete",
+  "买卖合同中发票条款如何拟定？": "report.fallbackQuestions.invoice",
+};
+
+const SUGGESTION_KEYS = {
+  "近期「劳动合同」相关咨询激增，建议公司开展一次劳动法内部培训。":
+    "report.fallbackSuggestions.laborTraining",
+  "审查发现「违约责任缺失」是主要风险，建议更新标准合同模板，强制包含违约条款。":
+    "report.fallbackSuggestions.breachClause",
+  "周三和周五下午是法务咨询高峰，可在此时间段增加在线客服或支持人员。":
+    "report.fallbackSuggestions.peakSupport",
+};
+
+const translateWithMap = (value, map) => {
+  const text = String(value == null ? "" : value).trim();
+  const key = map[text];
+  return key ? i18n.t(key) : text;
+};
+
+const containsCjk = (text) => /[㐀-鿿]/.test(String(text == null ? "" : text));
+
+const translateRiskName = (name) => {
+  const text = String(name == null ? "" : name).trim();
+  const key = RISK_LABEL_KEYS[text];
+  if (key) {
+    return i18n.t(key);
+  }
+  // 英文模式下未知中文风险名统一落到 Other risks，避免页面残留中文
+  if (i18n.getLanguage() === "en" && containsCjk(text)) {
+    return i18n.t("report.fallbackRisks.other");
+  }
+  return text;
+};
+
 // 前端超时兜底：应大于云函数 config.json 的 timeout（30s），
 // 防止极端网络情况下 loading 永远不结束
 const AI_SUGGESTION_TIMEOUT_MS = 35000;
@@ -171,10 +246,11 @@ Page({
     return "#4d6bfe";
   },
   applyOverview(overview) {
-    // 云端数据原样展示（不做翻译），仅补充热力图颜色
+    // 数据库里的动态字段是中文，渲染前统一翻译成当前语言
     const processedHeatmap = (overview.heatmap || []).map(dayItem => {
       return {
         ...dayItem,
+        day: translateWithMap(dayItem.day, WEEKDAY_LABEL_KEYS),
         blocks: dayItem.counts.map(count => ({
           count,
           color: this.getHeatmapColor(count)
@@ -182,13 +258,37 @@ Page({
       };
     });
 
+    const metrics = (overview.metrics || []).map(item => ({
+      ...item,
+      label: translateWithMap(item.label, METRIC_LABEL_KEYS),
+    }));
+    const trends = (overview.trends || []).map(item => ({
+      ...item,
+      label: translateWithMap(item.label, TREND_LABEL_KEYS),
+    }));
+    const risks = (overview.risks || []).map(item => ({
+      ...item,
+      label: translateRiskName(item.label),
+    }));
+    const isEnglish = i18n.getLanguage() === "en";
+    // 无法本地翻译的原始中文问题/建议，英文模式下先隐藏，避免页面残留中文
+    const frequentQuestions = (overview.frequentQuestions || [])
+      .map(item => ({
+        ...item,
+        question: translateWithMap(item.question, QUESTION_KEYS),
+      }))
+      .filter(item => !isEnglish || !containsCjk(item.question));
+    const suggestions = (overview.suggestions || [])
+      .map(item => translateWithMap(item, SUGGESTION_KEYS))
+      .filter(item => !isEnglish || !containsCjk(item));
+
     this.setData({
-      metrics: overview.metrics || [],
-      trends: overview.trends || [],
+      metrics,
+      trends,
       heatmap: processedHeatmap,
-      risks: overview.risks || [],
-      frequentQuestions: overview.frequentQuestions || [],
-      suggestions: toSuggestionItems(overview.suggestions || []),
+      risks,
+      frequentQuestions,
+      suggestions: toSuggestionItems(suggestions),
       timeLabels: buildTimeLabels(),
       isEmpty:
         (!overview.metrics || overview.metrics.length === 0) &&
