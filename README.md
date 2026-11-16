@@ -85,6 +85,8 @@ wx.cloud.init({
 - `cloudfunctions/auth`
 - `cloudfunctions/contract`
 - `cloudfunctions/report`
+- `cloudfunctions/getReportData`
+- `cloudfunctions/generateAIReport`
 
 ### 5.0 先安装云函数依赖（建议）
 
@@ -94,6 +96,8 @@ wx.cloud.init({
 - `cloudfunctions/auth`（`wx-server-sdk`）
 - `cloudfunctions/contract`（`wx-server-sdk`）
 - `cloudfunctions/report`（`wx-server-sdk`）
+- `cloudfunctions/getReportData`（`wx-server-sdk`，统计报表真实聚合数据）
+- `cloudfunctions/generateAIReport`（`wx-server-sdk`，基于报表数据生成 AI 法务建议）
 
 在项目根目录执行：
 
@@ -102,6 +106,8 @@ npm install --prefix cloudfunctions/aiChat
 npm install --prefix cloudfunctions/auth
 npm install --prefix cloudfunctions/contract
 npm install --prefix cloudfunctions/report
+npm install --prefix cloudfunctions/getReportData
+npm install --prefix cloudfunctions/generateAIReport
 ```
 
 如果你使用微信开发者工具，也可以在每个云函数目录右键选择“在终端中打开”，执行 `npm install`。
@@ -120,7 +126,7 @@ npm install --prefix cloudfunctions/report
 
 ### 5.2 默认使用 DeepSeek（推荐直接可用）
 
-`aiChat` 云函数默认已经按 DeepSeek 兼容接口实现，只需要在云函数环境变量里配置：
+`aiChat` 云函数默认已经按 DeepSeek 兼容接口实现；`generateAIReport`（报表页 AI 建议）需要**单独为这个函数配置同一组环境变量**（云开发环境变量按函数隔离，不会自动继承 `aiChat` 的配置）：
 
 - `MODEL_API_KEY`：必填，DeepSeek API Key
 - `MODEL_BASE_URL`：可选，默认 `https://api.deepseek.com/v1/chat/completions`

@@ -4,7 +4,7 @@
 
 | 类型 | 说明 | 涉及模块 |
 |---|---|---|
-| A. 云函数 RPC | 主要接口，`wx.cloud.callFunction` + `action` 分发 | `contract`、`aiChat`、`auth`、`report` |
+| A. 云函数 RPC | 主要接口，`wx.cloud.callFunction` + `action` 分发 | `contract`、`aiChat`、`auth`、`report`、`getReportData`、`generateAIReport` |
 | B. 前端流式直连 | 主聊天链路，小程序端直接请求 DeepSeek | `services/ai-chat-stream-service.js` |
 | C. 前端直连数据库 | 绕过云函数的兜底写入 / 会话持久化 | `contracts`、`agent_ui_sessions` 集合 |
 | D. 组件内工具派发 | 组件内部方法调用，非网络接口 | `archive_contract` |
@@ -369,6 +369,83 @@ Content-Type: application/json
 
 数据来源：`reports` 集合中 `type: "overview"` 的第一条记录；不存在时整体返回内置 mock 数据（云函数与前端各有一份，双保险）。
 
+### 5.1 `getReportData` — 统计报表真实聚合数据
+
+文件：`cloudfunctions/getReportData/index.js`
+调用方：`pages/reports/reports.js`
+
+**入参**：无
+
+**返回**
+
+```js
+{
+  ok: true,
+  data: {
+    metrics: [ { label: "本月咨询数", value }, { label: "审查合同", value }, { label: "发现风险", value } ],
+    trends:  [ { label: "较上月咨询增长", value }, { label: "审查合同较上月增长", value } ],
+    risks:   [ { label: "高风险|中风险|低风险|未标注", value, percentage, color } ],
+    // 可选：reports 集合 overview 文档中的 heatmap / frequentQuestions / suggestions
+    meta:    { month, consultThisMonth, consultLastMonth, reviewThisMonth, reviewLastMonth, reviewTotal, riskFlagged, generatedAt }
+  }
+}
+```
+
+**聚合口径**
+
+| 指标 | 集合 | 口径 |
+|---|---|---|
+| 本月咨询数 | `agent_ui_sessions` | `activeFeatureKey = "consult"`，按 `updatedAt`（兼容 `createdAtTs` / `createdAt`）落在北京时间当月 |
+| 审查合同 | `contracts` | `category = "合同审查"` 全量数量 |
+| 发现风险 | `contracts` | 审查文本命中 `高风险` / `中风险` / `低风险` 关键词的合同数 |
+| 风险分布 | `contracts` | 从 `searchableText`（缺失时回退 `content`）按「高 → 中 → 低」优先级归类，占比以审查合同总数为分母 |
+
+说明：
+
+- 云开发集合名区分大小写，实际集合为 `agent_ui_sessions` / `contracts`（非 `Agent_UI_Sessions` / `Contracts`）。
+- `contracts` 实际落库的时间字段为 `createdAt`（毫秒时间戳），`createdAtTs` 是 `contract` 云函数返回给前端的派生字段；聚合同时兼容两者。
+- 热力图、高频问题、智能建议暂无对应可聚合字段，云函数会优先读取 `reports` 集合的 overview 配置，前端再做兜底。
+
+### 5.2 `generateAIReport` — AI 法务建议
+
+文件：`cloudfunctions/generateAIReport/index.js`
+调用方：`pages/reports/reports.js`（报表页“AI Legal Suggestions”模块）
+
+**入参**
+
+```js
+{
+  lang: "zh" | "en",
+  stats: {
+    month, metrics, trends, risks, frequentQuestions,
+    reviewTotal, riskFlagged
+  }
+}
+```
+
+**返回**
+
+```js
+{
+  ok: true,
+  data: {
+    suggestions: ["建议1", "建议2"], // 2-3 条
+    lang, model, generatedAt
+  }
+}
+```
+
+**错误**：`{ ok: false, error }`；上游超时额外返回 `code: "UPSTREAM_TIMEOUT"`。
+
+**行为说明**
+
+- 云函数把 `stats` 裁剪后拼进 Prompt 调用 DeepSeek，System Prompt 强制：
+  - 只依据传入数据生成 2-3 条可直接执行的建议；
+  - `lang = "en"` 时全部输出英文（即使源数据标签是中文）；`lang = "zh"` 时输出简体中文；
+  - 只返回 `{"suggestions":[...]}` JSON，不允许 markdown。
+- 环境变量与 `aiChat` 相同：`MODEL_API_KEY`（或 `DEEPSEEK_API_KEY`）、`MODEL_BASE_URL`、`MODEL_NAME`。
+- 超时分为三层：云函数 `config.json` 的 `timeout: 30`（秒）→ 内部 HTTP 超时 25s → 前端 35s 兜底。任一层失败时前端回退到本地建议并提示。
+
 ---
 
 ## 6. 前端直连数据库
@@ -416,7 +493,9 @@ Content-Type: application/json
 | `contract` | `pages/foodBuy/foodBuy.js`（list / detail / updateManualEdit / delete）、`components/agent-ui/modules/chat-core-retrieval-methods.js`（search / list / detail）、`chat-core-archive-methods.js`（saveFromChat） |
 | `aiChat` | `services/ai-chat-stream-service.js`（getConfig）、`components/agent-ui/modules/file-methods.js`（extractFileText / extractImageText） |
 | `auth` | `pages/index/index.js`（register / login） |
-| `report` | `pages/reports/reports.js`（无 action） |
+| `report` | 旧版统计报表（已被 `getReportData` 取代，保留兼容） |
+| `getReportData` | `pages/reports/reports.js`（无 action） |
+| `generateAIReport` | `pages/reports/reports.js`（AI 建议生成） |
 
 数据库集合：`contracts`、`agent_ui_sessions`、`reports`、`users`。
 

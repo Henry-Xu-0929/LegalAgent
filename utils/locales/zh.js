@@ -321,6 +321,8 @@ module.exports = {
     riskDistribution: "合同风险分布",
     frequentQuestions: "高频咨询问题",
     suggestions: "智能法务建议",
+    aiGenerating: "AI 正在分析报表数据…",
+    aiFallbackNote: "AI 建议暂不可用，已展示本地建议。",
     timesSuffix: "次",
     casesSuffix: "例",
     loadFailed: "报表数据获取失败",
