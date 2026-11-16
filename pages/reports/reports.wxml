@@ -74,12 +74,21 @@
         <image class="ai-icon" src="/imgs/chat-active.png" mode="aspectFit"></image>
         {{t.report.suggestions}}
       </view>
-      <view class="suggestion-list">
-        <view class="suggestion-item" wx:for="{{suggestions}}" wx:key="*this">
+      <view wx:if="{{suggestionsLoading}}" class="suggestion-loading">
+        <view class="typing-dots">
+          <view class="dot"></view>
+          <view class="dot"></view>
+          <view class="dot"></view>
+        </view>
+        <text>{{t.report.aiGenerating}}</text>
+      </view>
+      <view wx:else class="suggestion-list">
+        <view class="suggestion-item" wx:for="{{suggestions}}" wx:key="id">
           <view class="suggestion-bullet">•</view>
-          <view class="suggestion-text">{{item}}</view>
+          <view class="suggestion-text">{{item.text}}<text wx:if="{{suggestionsTyping && index === suggestions.length - 1}}" class="typing-cursor">▍</text></view>
         </view>
       </view>
+      <view wx:if="{{aiSuggestionFailed}}" class="suggestion-note">{{t.report.aiFallbackNote}}</view>
     </view>
   </block>
 </view>

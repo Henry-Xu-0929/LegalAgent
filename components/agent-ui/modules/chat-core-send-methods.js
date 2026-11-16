@@ -122,6 +122,44 @@ module.exports = {
         : "",
     ].join("\n");
   },
+  logConsultQuestion: function (question) {
+    if (this.data.chatMode !== "model") {
+      return;
+    }
+    const featureKey =
+      this.data.activeFeatureKey ||
+      this.data.modelConfig?.currentFeatureKey ||
+      "consult";
+    if (featureKey !== "consult") {
+      return;
+    }
+    const text = String(question || "").trim();
+    if (!text) {
+      return;
+    }
+    const now = Date.now();
+    try {
+      // 每次咨询单独落一条日志，供报表统计“本月咨询数”和“高频问题”
+      wx.cloud
+        .database()
+        .collection("agent_ui_sessions")
+        .add({
+          data: {
+            sessionType: "consult_log",
+            question: text.slice(0, 1000),
+            activeFeatureKey: "consult",
+            createdAt: now,
+            createdAtTs: now,
+            updatedAt: now,
+          },
+        })
+        .catch((error) => {
+          console.warn("logConsultQuestion failed", error);
+        });
+    } catch (error) {
+      console.warn("logConsultQuestion failed", error);
+    }
+  },
   sendMessage: async function (message) {
     if (this.data.showFileList) {
       this.setData({
@@ -218,6 +256,7 @@ module.exports = {
       chatStatus: 1,
     });
     this.autoToBottom();
+    this.logConsultQuestion(inputValue);
     try {
       const attachmentCaseContext = chatMode === "model"
         ? this.resolveCaseContextFromFileList(pendingFileList)
